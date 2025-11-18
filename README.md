@@ -3,7 +3,7 @@
 Sistema completo para la gestión de usuarios, asistencias y pagos del gimnasio Antología Box23.
 
 ## 🌐 Acceso a la aplicación
-**[https://tuusuario.github.io/antologia-box23](https://tuusuario.github.io/antologia-box23)**
+**[https://antologiabox23-boop.github.io/antologia-box23](https://antologiabox23-boop.github.io/antologia-box23)**
 
 ## 🚀 Características
 - Gestión completa de usuarios
