@@ -1,7 +1,7 @@
 /**
  * Antología Box23 - Sistema de Gestión
  * Lógica principal de la aplicación
- * Autor: [Tu Nombre]
+ * Autor: [Carlos Alberto Africano Granados]
  * Versión: 2.0 (Clean Code)
  */
 
@@ -342,4 +342,5 @@ document.addEventListener('DOMContentLoaded', () => {
     // Exponer funciones globales necesarias para onclick en HTML (si las hay)
     window.UserManager = UserManager;
     window.WhatsAppManager = WhatsAppManager;
+
 });
