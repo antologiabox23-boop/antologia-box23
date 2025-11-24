@@ -388,7 +388,115 @@ const IncomeManager = {
         document.getElementById('incomeTotal').textContent = Utils.formatCurrency(total);
     }
 };
+// ==========================================
+// 6.5. MÓDULO DE RESPALDO (EXCEL)
+// ==========================================
+const BackupManager = {
+    init: () => {
+        const fileInput = document.getElementById('restoreFile');
+        const restoreBtn = document.getElementById('restoreData');
+        const backupBtn = document.getElementById('backupData');
 
+        // Activar botón cuando se selecciona archivo
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    document.getElementById('selectedFileName').textContent = e.target.files[0].name;
+                    restoreBtn.disabled = false;
+                }
+            });
+        }
+
+        if (restoreBtn) restoreBtn.addEventListener('click', BackupManager.restoreFromExcel);
+        if (backupBtn) backupBtn.addEventListener('click', BackupManager.exportToExcel);
+    },
+
+    exportToExcel: () => {
+        const wb = XLSX.utils.book_new();
+        
+        // Crear hojas
+        const wsUsers = XLSX.utils.json_to_sheet(AppState.users);
+        const wsAttendance = XLSX.utils.json_to_sheet(AppState.attendance);
+        const wsIncome = XLSX.utils.json_to_sheet(AppState.income);
+
+        XLSX.utils.book_append_sheet(wb, wsUsers, "Usuarios");
+        XLSX.utils.book_append_sheet(wb, wsAttendance, "Asistencias");
+        XLSX.utils.book_append_sheet(wb, wsIncome, "Pagos");
+
+        // Descargar
+        const dateStr = new Date().toISOString().slice(0,10);
+        XLSX.writeFile(wb, `Respaldo_Antologia_${dateStr}.xlsx`);
+    },
+
+    restoreFromExcel: () => {
+        const fileInput = document.getElementById('restoreFile');
+        const file = fileInput.files[0];
+        const replaceData = document.getElementById('replaceData').checked;
+
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                // Leer Usuarios
+                if (workbook.Sheets["Usuarios"]) {
+                    const newUsers = XLSX.utils.sheet_to_json(workbook.Sheets["Usuarios"]);
+                    if (replaceData) {
+                        AppState.users = newUsers;
+                    } else {
+                        // Fusionar evitando duplicados por ID
+                        newUsers.forEach(u => {
+                            if (!AppState.users.some(existing => existing.id === u.id)) {
+                                AppState.users.push(u);
+                            }
+                        });
+                    }
+                }
+
+                // Leer Asistencias
+                if (workbook.Sheets["Asistencias"]) {
+                    const newAtt = XLSX.utils.sheet_to_json(workbook.Sheets["Asistencias"]);
+                    if (replaceData) AppState.attendance = newAtt;
+                    else AppState.attendance = [...AppState.attendance, ...newAtt];
+                }
+
+                // Leer Pagos
+                if (workbook.Sheets["Pagos"]) {
+                    const newInc = XLSX.utils.sheet_to_json(workbook.Sheets["Pagos"]);
+                    if (replaceData) AppState.income = newInc;
+                    else AppState.income = [...AppState.income, ...newInc];
+                }
+
+                // Guardar todo
+                Utils.saveToLocal();
+                
+                // Intentar subir a la nube los datos restaurados (Opcional, puede tardar)
+                // newUsers.forEach(u => CloudService.saveUser(u)); 
+                
+                Utils.showAlert('Datos restaurados correctamente desde el archivo');
+                
+                // Refrescar interfaz
+                UserManager.renderUsers();
+                AttendanceManager.renderList();
+                IncomeManager.renderHistory();
+                Utils.updateDashboardStats();
+                
+                // Limpiar input
+                fileInput.value = '';
+                document.getElementById('selectedFileName').textContent = 'Ningún archivo seleccionado';
+                document.getElementById('restoreData').disabled = true;
+
+            } catch (error) {
+                console.error(error);
+                Utils.showAlert('Error al leer el archivo Excel. Asegúrate de que sea un respaldo válido.', 'error');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+};
 // ==========================================
 // 7. MÓDULO WHATSAPP Y AUXILIARES
 // ==========================================
@@ -451,8 +559,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Una vez cargado de la nube, refrescar las tablas
     UserManager.renderUsers();
     IncomeManager.renderHistory();
+    BackupManager.init();
     
     // Exponer globalmente
     window.UserManager = UserManager;
     window.WhatsAppManager = WhatsAppManager;
 });
+
