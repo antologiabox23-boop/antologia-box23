@@ -1,4 +1,6 @@
-const { Pool } = require('pg');
+import pg from 'pg';
+const { Pool } = pg;
+
 const pool = new Pool({ connectionString: process.env.DATABASE_URL + "?sslmode=require" });
 
 export default async function handler(request, response) {
