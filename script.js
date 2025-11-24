@@ -1,9 +1,9 @@
 /**
  * Antología Box23 - Sistema de Gestión
- * Lógica principal de la aplicación
+ * Lógica principal de la aplicación + Conexión a Neon DB (Vercel API)
+ * Versión: 3.0 (Cloud Connected)
  * Autor: [Carlos Alberto Africano Granados]
- * Versión: 2.0 (Clean Code)
- */
+  */
 
 'use strict';
 
@@ -18,7 +18,6 @@ const AppState = {
         autoBackupInterval: 15 * 60 * 1000, // 15 minutos
         lastBackup: null
     },
-    // Simulación de base de datos local
     dbKeys: {
         USERS: 'antologia_users',
         ATTENDANCE: 'antologia_attendance',
@@ -27,36 +26,149 @@ const AppState = {
 };
 
 // ==========================================
-// 2. MÓDULO DE UTILIDADES (Helpers)
+// 2. MÓDULO DE NUBE (Neon DB Service)
+// ==========================================
+const CloudService = {
+    // Si estamos en local (file://) no intenta conectar a la API, solo si estamos en web
+    isOnline: () => window.location.protocol.startsWith('http'),
+
+    saveUser: async (user) => {
+        if (!CloudService.isOnline()) return;
+        try {
+            await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(user)
+            });
+            CloudService.updateStatus('Guardado en nube', 'success');
+        } catch (e) { console.error("Error nube:", e); }
+    },
+
+    saveAttendance: async (attendanceItem) => {
+        if (!CloudService.isOnline()) return;
+        try {
+            await fetch('/api/attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(attendanceItem)
+            });
+        } catch (e) { console.error("Error nube:", e); }
+    },
+
+    saveIncome: async (incomeItem) => {
+        if (!CloudService.isOnline()) return;
+        try {
+            await fetch('/api/income', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(incomeItem)
+            });
+        } catch (e) { console.error("Error nube:", e); }
+    },
+
+    loadAllFromCloud: async () => {
+        if (!CloudService.isOnline()) {
+            console.log("Modo offline: Cargando solo de LocalStorage");
+            return false;
+        }
+        
+        CloudService.updateStatus('Sincronizando...', 'info');
+        
+        try {
+            // Cargar Usuarios
+            const resUsers = await fetch('/api/users');
+            if (resUsers.ok) {
+                const usersDB = await resUsers.json();
+                // Mapear nombres de DB (snake_case) a JS (camelCase) si es necesario
+                // Por ahora asumimos que la DB devuelve estructura similar o ajustamos aqui
+                if(usersDB.length > 0) AppState.users = CloudService.mapUsersFromDB(usersDB);
+            }
+
+            // Cargar Asistencias
+            const resAtt = await fetch('/api/attendance');
+            if (resAtt.ok) {
+                const attDB = await resAtt.json();
+                if(attDB.length > 0) AppState.attendance = CloudService.mapAttendanceFromDB(attDB);
+            }
+
+            // Cargar Pagos
+            const resInc = await fetch('/api/income');
+            if (resInc.ok) {
+                const incDB = await resInc.json();
+                if(incDB.length > 0) AppState.income = CloudService.mapIncomeFromDB(incDB);
+            }
+
+            CloudService.updateStatus('Conectado a Neon PostgreSQL', 'success');
+            document.getElementById('lastCloudSync').textContent = new Date().toLocaleTimeString();
+            return true;
+        } catch (error) {
+            console.error("Error cargando de nube:", error);
+            CloudService.updateStatus('Error de conexión', 'error');
+            return false;
+        }
+    },
+
+    updateStatus: (text, type) => {
+        const statusText = document.getElementById('cloudStatusText');
+        const icon = document.getElementById('cloudStatusIcon');
+        if(!statusText) return;
+
+        statusText.textContent = text;
+        if(type === 'success') { statusText.className = 'text-success'; icon.textContent = '🟢'; }
+        if(type === 'info') { statusText.className = 'text-primary'; icon.textContent = '🔵'; }
+        if(type === 'error') { statusText.className = 'text-danger'; icon.textContent = '🔴'; }
+    },
+
+    // Mappers para convertir de formato SQL (snake_case) a App (camelCase)
+    mapUsersFromDB: (rows) => {
+        return rows.map(r => ({
+            id: r.id, name: r.name, document: r.document, phone: r.phone,
+            birthdate: r.birthdate, eps: r.eps, rh: r.rh,
+            emergencyContact: r.emergency_contact, emergencyPhone: r.emergency_phone,
+            classTime: r.class_time, affiliationType: r.affiliation_type, status: r.status
+        }));
+    },
+    mapAttendanceFromDB: (rows) => {
+        return rows.map(r => ({ id: r.id, userId: r.user_id, date: r.date, timestamp: r.timestamp }));
+    },
+    mapIncomeFromDB: (rows) => {
+        return rows.map(r => ({
+            id: r.id, userId: r.user_id, startDate: r.start_date, endDate: r.end_date,
+            amount: parseFloat(r.amount), method: r.method, description: r.description, date: r.date
+        }));
+    }
+};
+
+// ==========================================
+// 3. MÓDULO DE UTILIDADES (Helpers)
 // ==========================================
 const Utils = {
     generateId: () => '_' + Math.random().toString(36).substr(2, 9),
     
     formatCurrency: (amount) => {
-        return new Intl.NumberFormat('es-CO', {
-            style: 'currency',
-            currency: 'COP',
-            minimumFractionDigits: 0
-        }).format(amount);
+        return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(amount);
     },
 
     formatDate: (dateString) => {
         if (!dateString) return '';
+        // Ajuste para zona horaria local para evitar que la fecha retroceda un día
+        const date = new Date(dateString);
+        const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+        const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+        
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        return new Date(dateString).toLocaleDateString('es-ES', options);
+        return adjustedDate.toLocaleDateString('es-ES', options);
     },
 
-    showAlert: (message, type = 'success') => {
-        // Podrías implementar SweetAlert2 aquí o usar alertas nativas
-        alert(message); 
-    },
+    showAlert: (message, type = 'success') => { alert(message); },
 
     saveToLocal: () => {
+        // Guardar en LocalStorage (Respaldo inmediato navegador)
         localStorage.setItem(AppState.dbKeys.USERS, JSON.stringify(AppState.users));
         localStorage.setItem(AppState.dbKeys.ATTENDANCE, JSON.stringify(AppState.attendance));
         localStorage.setItem(AppState.dbKeys.INCOME, JSON.stringify(AppState.income));
         AppState.backupConfig.lastBackup = new Date();
-        Utils.updateDashboardStats(); // Actualizar UI cada vez que se guarda
+        Utils.updateDashboardStats();
     },
 
     loadFromLocal: () => {
@@ -67,33 +179,20 @@ const Utils = {
         if (users) AppState.users = JSON.parse(users);
         if (attendance) AppState.attendance = JSON.parse(attendance);
         if (income) AppState.income = JSON.parse(income);
-    },
-    
-    updateDashboardStats: () => {
-        // Actualiza los contadores del Dashboard principal
-        document.getElementById('infoUsers').textContent = AppState.users.length;
-        document.getElementById('infoAttendance').textContent = AppState.attendance.length;
-        document.getElementById('infoIncome').textContent = AppState.income.length;
-        
-        // Reportes Tab
-        document.getElementById('reportTotalUsers').textContent = AppState.users.filter(u => u.status === 'active').length;
     }
 };
 
 // ==========================================
-// 3. MÓDULO DE USUARIOS
+// 4. MÓDULO DE USUARIOS
 // ==========================================
 const UserManager = {
     init: () => {
-        // Listener para el formulario de crear usuario
         document.getElementById('userForm').addEventListener('submit', UserManager.handleAddUser);
-        // Listener para búsqueda
         document.getElementById('searchUserInput').addEventListener('input', UserManager.renderUsers);
-        
         UserManager.renderUsers();
     },
 
-    handleAddUser: (e) => {
+    handleAddUser: async (e) => {
         e.preventDefault();
         
         const newUser = {
@@ -112,7 +211,6 @@ const UserManager = {
             createdAt: new Date().toISOString()
         };
 
-        // Validación simple de duplicados
         const exists = AppState.users.some(u => u.document === newUser.document);
         if (exists) {
             Utils.showAlert('Ya existe un usuario con este documento', 'error');
@@ -121,6 +219,10 @@ const UserManager = {
 
         AppState.users.push(newUser);
         Utils.saveToLocal();
+        
+        // Enviar a Neon
+        await CloudService.saveUser(newUser);
+
         UserManager.renderUsers();
         document.getElementById('userForm').reset();
         Utils.showAlert('Usuario registrado correctamente');
@@ -129,73 +231,45 @@ const UserManager = {
     renderUsers: () => {
         const tbody = document.getElementById('usersList');
         const searchTerm = document.getElementById('searchUserInput')?.value.toLowerCase() || '';
-        
         tbody.innerHTML = '';
 
         const filteredUsers = AppState.users.filter(user => 
-            user.name.toLowerCase().includes(searchTerm) || 
-            user.document.includes(searchTerm)
+            (user.name && user.name.toLowerCase().includes(searchTerm)) || 
+            (user.document && user.document.includes(searchTerm))
         );
 
         filteredUsers.forEach(user => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${user.id.substr(0, 6)}...</td>
+                <td>${user.id.substr(0, 6)}</td>
                 <td>${user.name}</td>
                 <td>${user.document}</td>
                 <td>${user.phone}</td>
                 <td><span class="badge bg-info">${user.classTime}</span></td>
+                <td><span class="badge ${user.status === 'active' ? 'bg-success' : 'bg-secondary'}">${user.status === 'active' ? 'Activo' : 'Inactivo'}</span></td>
                 <td>
-                    <span class="badge ${user.status === 'active' ? 'bg-success' : 'bg-secondary'}">
-                        ${user.status === 'active' ? 'Activo' : 'Inactivo'}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-primary" onclick="UserManager.editUser('${user.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-success" onclick="WhatsAppManager.openModal('${user.phone}')">
-                        <i class="fab fa-whatsapp"></i>
-                    </button>
+                    <button class="btn btn-sm btn-success" onclick="WhatsAppManager.openModal('${user.phone}')"><i class="fab fa-whatsapp"></i></button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
-    },
-
-    editUser: (id) => {
-        const user = AppState.users.find(u => u.id === id);
-        if (!user) return;
-        
-        // Lógica para llenar el modal #editUserModal y mostrarlo
-        // Aquí deberías usar Bootstrap Modal API
-        // const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
-        // Llenar campos...
-        // modal.show();
-        console.log("Editando usuario:", user.name);
     }
 };
 
 // ==========================================
-// 4. MÓDULO DE ASISTENCIA
+// 5. MÓDULO DE ASISTENCIA
 // ==========================================
 const AttendanceManager = {
     init: () => {
-        const dateInput = document.getElementById('attendanceDate');
-        // Establecer fecha de hoy por defecto
-        dateInput.valueAsDate = new Date();
-        
+        document.getElementById('attendanceDate').valueAsDate = new Date();
         document.getElementById('refreshAttendance').addEventListener('click', AttendanceManager.renderList);
         document.getElementById('saveAttendance').addEventListener('click', AttendanceManager.saveDay);
-        
         AttendanceManager.renderList();
     },
 
     renderList: () => {
         const listContainer = document.getElementById('attendanceUsersList');
         listContainer.innerHTML = '';
-        
-        // Solo mostrar usuarios activos para tomar lista
         const activeUsers = AppState.users.filter(u => u.status === 'active');
         
         activeUsers.forEach(user => {
@@ -203,8 +277,7 @@ const AttendanceManager = {
             div.className = 'attendance-user-item';
             div.innerHTML = `
                 <div class="attendance-check-container">
-                    <input type="checkbox" class="form-check-input attendance-checkbox" 
-                           data-user-id="${user.id}" id="att_${user.id}">
+                    <input type="checkbox" class="form-check-input attendance-checkbox" data-user-id="${user.id}">
                 </div>
                 <div class="attendance-user-info">
                     <div class="attendance-user-name">${user.name}</div>
@@ -213,60 +286,59 @@ const AttendanceManager = {
             `;
             listContainer.appendChild(div);
         });
-        
-        // Actualizar contadores
         document.getElementById('totalUsersCount').textContent = activeUsers.length;
     },
 
-    saveDay: () => {
+    saveDay: async () => {
         const date = document.getElementById('attendanceDate').value;
         const checkboxes = document.querySelectorAll('.attendance-checkbox:checked');
         
         let count = 0;
-        checkboxes.forEach(chk => {
+        for (const chk of checkboxes) {
             const userId = chk.getAttribute('data-user-id');
-            AppState.attendance.push({
+            const newAtt = {
                 id: Utils.generateId(),
                 userId: userId,
                 date: date,
                 timestamp: new Date().toISOString()
-            });
+            };
+            
+            AppState.attendance.push(newAtt);
+            // Enviar a Neon uno por uno (o podrías modificar la API para recibir arrays)
+            CloudService.saveAttendance(newAtt);
             count++;
-        });
+        }
 
         Utils.saveToLocal();
-        Utils.showAlert(`Se registraron ${count} asistencias para el día ${date}`);
-        // Limpiar checkboxes
+        Utils.showAlert(`Registradas ${count} asistencias`);
         document.querySelectorAll('.attendance-checkbox').forEach(c => c.checked = false);
+        Utils.updateDashboardStats();
     }
 };
 
 // ==========================================
-// 5. MÓDULO DE PAGOS (INCOME)
+// 6. MÓDULO DE PAGOS
 // ==========================================
 const IncomeManager = {
     init: () => {
-        // Llenar select de usuarios en pagos
         IncomeManager.populateUserSelect();
-        
         document.getElementById('incomeForm').addEventListener('submit', IncomeManager.handlePayment);
+        IncomeManager.renderHistory(); // Render inicial
     },
 
     populateUserSelect: () => {
         const select = document.getElementById('incomeUserSelect');
         select.innerHTML = '<option value="">Seleccionar usuario</option>';
-        
         AppState.users.forEach(user => {
             const option = document.createElement('option');
             option.value = user.id;
-            option.textContent = `${user.name} (${user.document})`;
+            option.textContent = `${user.name}`;
             select.appendChild(option);
         });
     },
 
-    handlePayment: (e) => {
+    handlePayment: async (e) => {
         e.preventDefault();
-        
         const payment = {
             id: Utils.generateId(),
             userId: document.getElementById('incomeUserSelect').value,
@@ -280,67 +352,107 @@ const IncomeManager = {
 
         AppState.income.push(payment);
         Utils.saveToLocal();
-        Utils.showAlert('Pago registrado correctamente');
+        
+        // Enviar a Neon
+        await CloudService.saveIncome(payment);
+
+        Utils.showAlert('Pago registrado');
         document.getElementById('incomeForm').reset();
         IncomeManager.renderHistory();
     },
-
+    
     renderHistory: () => {
-        // Lógica para renderizar la tabla #incomeTable (similar a UserManager.renderUsers)
+        const tbody = document.getElementById('incomeList');
+        tbody.innerHTML = '';
+        // Mostrar últimos 10 pagos
+        const recentIncome = AppState.income.slice().reverse().slice(0, 10);
+        
+        let total = 0;
+        recentIncome.forEach(inc => {
+            const user = AppState.users.find(u => u.id === inc.userId);
+            const userName = user ? user.name : 'Desconocido';
+            total += inc.amount;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${Utils.formatDate(inc.date)}</td>
+                <td>${userName}</td>
+                <td>${Utils.formatCurrency(inc.amount)}</td>
+                <td>${inc.method}</td>
+                <td>${Utils.formatDate(inc.endDate)}</td>
+                <td>${inc.description}</td>
+                <td></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('incomeTotal').textContent = Utils.formatCurrency(total);
     }
 };
 
 // ==========================================
-// 6. MÓDULO DE WHATSAPP
+// 7. MÓDULO WHATSAPP Y AUXILIARES
 // ==========================================
 const WhatsAppManager = {
     openModal: (phone) => {
-        // Limpiar el número (quitar espacios, guiones, +57)
+        if(!phone) return Utils.showAlert('Usuario sin teléfono', 'error');
         let cleanPhone = phone.replace(/\D/g, '');
         if (cleanPhone.startsWith('57')) cleanPhone = cleanPhone.substring(2);
-        
         document.getElementById('whatsappNumber').value = cleanPhone;
+        new bootstrap.Modal(document.getElementById('whatsappModal')).show();
         
-        // Abrir modal usando Bootstrap 5
-        const modalEl = document.getElementById('whatsappModal');
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-        
-        // Configurar botón de envío
         document.getElementById('whatsappLink').onclick = () => {
             const msg = document.getElementById('whatsappMessage').value;
-            const finalPhone = document.getElementById('whatsappNumber').value;
-            const url = `https://wa.me/57${finalPhone}?text=${encodeURIComponent(msg)}`;
-            window.open(url, '_blank');
+            const num = document.getElementById('whatsappNumber').value;
+            window.open(`https://wa.me/57${num}?text=${encodeURIComponent(msg)}`, '_blank');
         };
     }
 };
 
+Utils.updateDashboardStats = () => {
+    document.getElementById('infoUsers').textContent = AppState.users.length;
+    document.getElementById('infoAttendance').textContent = AppState.attendance.length;
+    document.getElementById('infoIncome').textContent = AppState.income.length;
+    
+    // Llenar select de pagos si hay usuarios nuevos
+    if(document.getElementById('incomeUserSelect')) IncomeManager.populateUserSelect();
+};
+
 // ==========================================
-// 7. INICIALIZACIÓN PRINCIPAL
+// 8. INICIALIZACIÓN
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('Sistema Antología Box23 Iniciando...');
     
-    // 1. Cargar datos
+    // 1. Cargar LocalStorage primero (para velocidad inmediata)
     Utils.loadFromLocal();
-    
+    Utils.updateDashboardStats();
+
     // 2. Inicializar Módulos
     UserManager.init();
     AttendanceManager.init();
     IncomeManager.init();
-    
-    // 3. Inicializar tooltips de Bootstrap
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl)
+
+    // 3. Intentar sincronizar con Neon (Nube)
+    // Botones manuales
+    document.getElementById('checkCloudStatusBtn').addEventListener('click', CloudService.loadAllFromCloud);
+    document.getElementById('restoreCloudBtn').addEventListener('click', async () => {
+        if(confirm("Esto reemplazará tus datos locales con los de la nube. ¿Continuar?")){
+            await CloudService.loadAllFromCloud();
+            Utils.saveToLocal(); // Actualizar local con lo que bajó de la nube
+            UserManager.renderUsers();
+            AttendanceManager.renderList();
+            IncomeManager.renderHistory();
+            Utils.showAlert("Datos restaurados desde Neon DB");
+        }
     });
 
-    // 4. Actualizar Dashboard inicial
-    Utils.updateDashboardStats();
-
-    // Exponer funciones globales necesarias para onclick en HTML (si las hay)
+    // Sincronización automática al inicio
+    await CloudService.loadAllFromCloud();
+    // Una vez cargado de la nube, refrescar las tablas
+    UserManager.renderUsers();
+    IncomeManager.renderHistory();
+    
+    // Exponer globalmente
     window.UserManager = UserManager;
     window.WhatsAppManager = WhatsAppManager;
-
 });
