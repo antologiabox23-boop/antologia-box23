@@ -1,7 +1,7 @@
 {
   "name": "antologia-box23",
   "version": "1.0.0",
-  "description": "Sistema de gestión para Antología Box23",
+  "type": "module",
   "dependencies": {
     "pg": "^8.11.3"
   }
