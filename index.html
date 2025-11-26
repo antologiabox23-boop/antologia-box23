@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Configuración para GitHub Pages -->
-    <!--<base href="/antologia-box23/"> -->
+    /* <base href="/antologia-box23/"> */
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antología Box23 - Sistema de Gestión</title>
     <!-- Bootstrap CSS -->
@@ -3247,6 +3247,16 @@
             alert('Usuario actualizado correctamente!');
         });
 
+        // Función para obtener el último pago de un usuario
+        function getLastPayment(userId) {
+            const userPayments = income.filter(payment => payment.userId == userId);
+            if (userPayments.length === 0) return null;
+
+            // Ordenar por endDate descendente
+            userPayments.sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+            return userPayments[0];
+        }
+
         // Cargar asistencias - NUEVA VERSIÓN MEJORADA (lista única ordenada alfabéticamente)
         function loadAttendanceByClass() {
             const attendanceDate = document.getElementById('attendanceDate').value;
@@ -3274,6 +3284,9 @@
 
                 // Verificar si la membresía está vencida
                 const membershipStatus = checkMembershipStatus(user.id);
+                
+                // Obtener el último pago del usuario
+                const lastPayment = getLastPayment(user.id);
 
                 const userItem = document.createElement('div');
                 userItem.className = 'attendance-user-item';
@@ -3287,8 +3300,7 @@
                     <div class="attendance-user-info">
                         <div class="attendance-user-name">${user.name}</div>
                         <div class="attendance-user-details">
-                            ${user.classTime ? `Clase: ${user.classTime} | ` : ''}
-                            ${user.affiliationType ? `Tipo: ${user.affiliationType}` : ''}
+                            ${lastPayment ? `Vigencia: ${formatDate(lastPayment.startDate)} - ${formatDate(lastPayment.endDate)}` : 'Sin pago registrado'}
                             ${membershipStatus.expired ? ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días</span>` : ''}
                         </div>
                     </div>
@@ -4335,5 +4347,5 @@ El equipo de Antología Box23`;
         })();
     </script>
 </body>
-</html>
 
+</html>
