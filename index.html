@@ -753,7 +753,7 @@
                                     <option value="AB+">AB+</option>
                                     <option value="AB-">AB-</option>
                                     <option value="O+">O+</option>
-                                    <option value="O-">O-</option>
+                                    <option value="O">O-</option>
                                 </select>
                             </div>
                         </div>
@@ -1394,12 +1394,15 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- MODIFICACIÓN 2: Cambio de "Medio de pago" a "Tipo de pago" -->
                                     <div class="mb-3">
-                                        <label for="paymentMethod" class="form-label">Medio de pago *</label>
-                                        <select class="form-select" id="paymentMethod" required>
-                                            <option value="">Seleccionar medio</option>
-                                            <option value="efectivo">Efectivo</option>
-                                            <option value="transferencia">Transferencia</option>
+                                        <label for="paymentType" class="form-label">Tipo de pago *</label>
+                                        <select class="form-select" id="paymentType" required>
+                                            <option value="">Seleccionar tipo</option>
+                                            <option value="clase suelta">Clase suelta</option>
+                                            <option value="paquete 10 clases">Paquete 10 clases</option>
+                                            <option value="mensualidad">Mensualidad</option>
+                                            <option value="personalizado Diana">Personalizado Diana</option>
                                         </select>
                                     </div>
                                     <div class="mb-3">
@@ -1447,7 +1450,7 @@
                                                 <th>Fecha Pago</th>
                                                 <th>Usuario</th>
                                                 <th>Monto</th>
-                                                <th>Método</th>
+                                                <th>Tipo</th>
                                                 <th>Válido hasta</th>
                                                 <th>Descripción</th>
                                                 <th>Acciones</th>
@@ -2155,11 +2158,17 @@
                         return;
                     }
 
+                    // MODIFICACIÓN 1: Formatear monto sin decimales y corregir fecha
+                    const amountFormatted = parseInt(pendingPaymentData.amount).toLocaleString('es-ES');
+                    
+                    // MODIFICACIÓN 1: Corregir fecha que retrocede un día
+                    const endDateFormatted = formatDateForWhatsApp(pendingPaymentData.endDate);
+                    
                     // Preparar y enviar mensaje de WhatsApp
-                    const message = `Hola ${selectedUser.name}, tu pago en Antologia Box23 por un valor de $${pendingPaymentData.amount} por ${pendingPaymentData.paymentMethod} ha sido registrado exitosamente. Tu membresía es válida hasta el ${formatDate(pendingPaymentData.endDate)}. ¡Gracias por confiar en Antología Box23!`;
+                    const message = `Hola ${selectedUser.name}, tu pago en Antologia Box23 por un valor de $${amountFormatted} por ${pendingPaymentData.paymentType} ha sido registrado exitosamente. Tu membresía es válida hasta el ${endDateFormatted}. ¡Gracias por confiar en Antología Box23!`;
 
                     // Usar la función sendWhatsApp
-                    sendWhatsApp(selectedUser.id, pendingPaymentData.amount, formatDate(pendingPaymentData.endDate));
+                    sendWhatsApp(selectedUser.id, amountFormatted, endDateFormatted);
                 } else {
                     alert('No se puede enviar el mensaje porque no se encontró el usuario seleccionado.');
                 }
@@ -2380,7 +2389,7 @@
                             'Fecha Fin': record.endDate,
                             'Usuario': user.name,
                             'Monto': parseFloat(record.amount || 0),
-                            'Método Pago': record.paymentMethod || '',
+                            'Tipo Pago': record.paymentType || '',
                             'Descripción': record.description || '',
                             'Fecha Registro': record.registeredAt ? new Date(record.registeredAt).toLocaleDateString('es-ES') : ''
                         };
@@ -2555,7 +2564,8 @@
                     paymentDate: new Date().toISOString().split('T')[0],
                     startDate: startDateInput.value,
                     endDate: endDateInput.value,
-                    paymentMethod: document.getElementById('paymentMethod').value,
+                    // MODIFICACIÓN 2: Cambiar paymentMethod por paymentType
+                    paymentType: document.getElementById('paymentType').value,
                     amount: parseFloat(document.getElementById('amount').value).toFixed(2),
                     description: document.getElementById('description').value,
                     registeredAt: new Date().toISOString()
@@ -2744,6 +2754,19 @@
             return phoneStr;
         }
 
+        // MODIFICACIÓN 1: Función para formatear fecha correctamente para WhatsApp
+        function formatDateForWhatsApp(dateString) {
+            if (!dateString) return '';
+            
+            // Crear fecha y asegurar que no se reste un día por zona horaria
+            const date = new Date(dateString);
+            // Agregar un día para compensar el desfase de zona horaria
+            date.setDate(date.getDate() + 1);
+            
+            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            return date.toLocaleDateString('es-ES', options);
+        }
+
         // Función mejorada para convertir fechas al formato correcto
         function convertToISODate(dateValue) {
             if (!dateValue) return null;
@@ -2828,7 +2851,7 @@
             // Rellenar el formulario de WhatsApp
             whatsappNumber.value = cleanPhone(user.phone);
 
-            // Crear mensaje predeterminado
+            // MODIFICACIÓN 1: Crear mensaje predeterminado con formato corregido
             const message = `Hola ${user.name}, tu pago en Antologia Box23 por un valor de $${amount} ha sido registrado. Tu membresía es válida hasta el ${endDate}. ¡Gracias por tu preferencia!`;
             whatsappMessage.value = message;
             messagePreview.textContent = message;
@@ -2887,8 +2910,10 @@
 
         // Formatear fecha a formato legible
         function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
             const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-            return new Date(dateString).toLocaleDateString('es-ES', options);
+            return date.toLocaleDateString('es-ES', options);
         }
 
         // Verificar si existe un archivo de respaldo automático
@@ -3257,6 +3282,65 @@
             return userPayments[0];
         }
 
+        // MODIFICACIÓN 3: Función para contar clases asistidas desde fecha inicial de pago (paquete 10 clases)
+        function countClassesAttended(userId, startDate) {
+            if (!startDate) return 0;
+            
+            const userAttendance = attendance.filter(a => 
+                a.userId === userId && 
+                a.status === 'presente' &&
+                a.date >= startDate
+            );
+            
+            return userAttendance.length;
+        }
+
+        // MODIFICACIÓN 3: Función para verificar estado de membresía con información de clases asistidas
+        function checkMembershipStatus(userId) {
+            const user = users.find(u => u.id === userId);
+            if (!user) return { expired: false, daysExpired: 0, classesAttended: 0, totalClasses: 0 };
+            
+            const userIncome = income.filter(i => i.userId === userId);
+            if (userIncome.length === 0) {
+                return { expired: true, daysExpired: 'N/A', classesAttended: 0, totalClasses: 0 };
+            }
+
+            // Obtener el último pago
+            const lastPayment = userIncome.sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
+            const today = new Date();
+            const endDate = new Date(lastPayment.endDate);
+            
+            // MODIFICACIÓN 3: Contar clases asistidas si es paquete de 10 clases
+            let classesAttended = 0;
+            let totalClasses = 0;
+            
+            if (lastPayment.paymentType === 'paquete 10 clases' || user.affiliationType === 'paquete 10 clases') {
+                classesAttended = countClassesAttended(userId, lastPayment.startDate);
+                totalClasses = 10;
+            }
+
+            if (today > endDate) {
+                // Calcular días de vencimiento
+                const diffTime = Math.abs(today - endDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return { 
+                    expired: true, 
+                    daysExpired: diffDays, 
+                    classesAttended: classesAttended,
+                    totalClasses: totalClasses,
+                    endDate: lastPayment.endDate
+                };
+            }
+
+            return { 
+                expired: false, 
+                daysExpired: 0, 
+                classesAttended: classesAttended,
+                totalClasses: totalClasses,
+                endDate: lastPayment.endDate
+            };
+        }
+
         // Cargar asistencias - NUEVA VERSIÓN MEJORADA (lista única ordenada alfabéticamente)
         function loadAttendanceByClass() {
             const attendanceDate = document.getElementById('attendanceDate').value;
@@ -3282,11 +3366,27 @@
 
                 if (isPresent) presentUsers++;
 
-                // Verificar si la membresía está vencida
+                // MODIFICACIÓN 3: Verificar si la membresía está vencida con información de clases
                 const membershipStatus = checkMembershipStatus(user.id);
                 
                 // Obtener el último pago del usuario
                 const lastPayment = getLastPayment(user.id);
+
+                // MODIFICACIÓN 3: Crear texto de información de membresía
+                let membershipInfo = '';
+                if (lastPayment) {
+                    membershipInfo = `Vigencia: ${formatDate(lastPayment.startDate)} - ${formatDate(lastPayment.endDate)}`;
+                    
+                    // MODIFICACIÓN 3: Agregar información de clases si es paquete de 10 clases vencido
+                    if (membershipStatus.expired && 
+                        (lastPayment.paymentType === 'paquete 10 clases' || user.affiliationType === 'paquete 10 clases')) {
+                        membershipInfo += ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días, ha asistido a ${membershipStatus.classesAttended} clases</span>`;
+                    } else if (membershipStatus.expired) {
+                        membershipInfo += ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días</span>`;
+                    }
+                } else {
+                    membershipInfo = 'Sin pago registrado';
+                }
 
                 const userItem = document.createElement('div');
                 userItem.className = 'attendance-user-item';
@@ -3300,8 +3400,7 @@
                     <div class="attendance-user-info">
                         <div class="attendance-user-name">${user.name}</div>
                         <div class="attendance-user-details">
-                            ${lastPayment ? `Vigencia: ${formatDate(lastPayment.startDate)} - ${formatDate(lastPayment.endDate)}` : 'Sin pago registrado'}
-                            ${membershipStatus.expired ? ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días</span>` : ''}
+                            ${membershipInfo}
                         </div>
                     </div>
                     <div class="attendance-actions">
@@ -3338,28 +3437,6 @@
 
             presentUsersCount.textContent = presentCheckboxes;
             pendingUsersCount.textContent = totalCheckboxes - presentCheckboxes;
-        }
-
-        // Verificar estado de la membresía
-        function checkMembershipStatus(userId) {
-            const userIncome = income.filter(i => i.userId === userId);
-            if (userIncome.length === 0) {
-                return { expired: true, daysExpired: 'N/A' };
-            }
-
-            // Obtener el último pago
-            const lastPayment = userIncome.sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
-            const today = new Date();
-            const endDate = new Date(lastPayment.endDate);
-
-            if (today > endDate) {
-                // Calcular días de vencimiento
-                const diffTime = Math.abs(today - endDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return { expired: true, daysExpired: diffDays };
-            }
-
-            return { expired: false, daysExpired: 0 };
         }
 
         // Función para verificar inasistencias consecutivas
@@ -3629,7 +3706,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                     <td>${record.paymentDate}</td>
                     <td>${user.name}</td>
                     <td>$${amount.toFixed(2)}</td>
-                    <td>${record.paymentMethod}</td>
+                    <td>${record.paymentType || '-'}</td>
                     <td>${record.endDate}</td>
                     <td>${record.description || '-'}</td>
                     <td>
@@ -3722,7 +3799,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                         <td>Pago registrado - ${record.description || 'Sin descripción'}</td>
                         <td>${user.name}</td>
                         <td>$${parseFloat(record.amount).toFixed(2)}</td>
-                        <td>Método: ${record.paymentMethod}, Válido hasta: ${record.endDate}</td>
+                        <td>Tipo: ${record.paymentType || 'N/A'}, Válido hasta: ${record.endDate}</td>
                     `;
                     reportList.appendChild(row);
                 });
@@ -3944,7 +4021,8 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                     paymentDate: convertToISODate(record['Fecha Pago'] || record.paymentDate),
                     startDate: convertToISODate(record['Fecha Inicio'] || record.startDate),
                     endDate: convertToISODate(record['Fecha Fin'] || record.endDate),
-                    paymentMethod: record['Método Pago'] || record.paymentMethod || 'efectivo',
+                    // MODIFICACIÓN 2: Actualizar para usar paymentType en lugar de paymentMethod
+                    paymentType: record['Tipo Pago'] || record.paymentType || record['Método Pago'] || record.paymentMethod || 'clase suelta',
                     amount: parseFloat(record.Monto || record.amount || 0),
                     description: record.Descripción || record.description || '',
                     registeredAt: record['Fecha Registro'] || record.registeredAt || new Date().toISOString()
@@ -4349,4 +4427,3 @@ El equipo de Antología Box23`;
 </body>
 
 </html>
-
