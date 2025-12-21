@@ -3197,7 +3197,7 @@
                     ? '<span class="badge bg-success user-status-badge">Activo</span>'
                     : '<span class="badge bg-danger user-status-badge">Inactivo</span>';
 
-                // Verificar si el usuario tiene cumpleaños próximos (7 días)
+                // Verificar si el usuario tiene cumpleaños próximos (3 días)
                 const birthdayInfo = getUpcomingBirthdayInfo(user.birthdate);
                 const birthdayBadge = birthdayInfo ? `<span class="birthday-badge">🎂 ${birthdayInfo.daysUntil} días</span>` : '';
 
@@ -4356,8 +4356,8 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             const diffTime = birthdayThisYear - todayLocal;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-            // Si está en los próximos 7 días
-            if (diffDays >= 0 && diffDays <= 7) {
+            // Si está en los próximos 3 días
+            if (diffDays >= 0 && diffDays <= 3) {
                 return { daysUntil: diffDays, date: birthdayThisYear };
             }
 
@@ -4586,5 +4586,6 @@ El equipo de Antología Box23`;
 </body>
 
 </html>
+
 
 
