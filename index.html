@@ -156,7 +156,14 @@
             border-color: var(--color-primary);
             color: var(--color-dark);
         }
-
+        
+        .expired-classes-highlight {
+            background-color: rgba(255, 114, 159, 0.3);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
         .summary-card {
             border-left: 4px solid var(--color-primary);
             color: var(--color-light);
@@ -1320,6 +1327,14 @@
                                                             id="filterAttendanceBtn">Filtrar</button>
                                                     </div>
                                                 </div>
+                                                <!-- MEJORA 1: Buscador para historial de asistencias -->
+                                                <div class="row mt-3">
+                                                    <div class="col-md-12">
+                                                        <label for="attendanceTableSearch" class="form-label">Buscar en el historial</label>
+                                                        <input type="text" class="form-control" id="attendanceTableSearch" 
+                                                               placeholder="Buscar por usuario, clase, estado...">
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="table-responsive table-container">
                                                 <table class="table table-striped table-hover" id="attendanceTable">
@@ -1441,6 +1456,14 @@
                                     </div>
                                     <div class="col-md-3 d-flex align-items-end">
                                         <button class="btn btn-primary w-100" id="filterIncomeBtn">Filtrar</button>
+                                    </div>
+                                </div>
+                                <!-- MEJORA 1: Buscador para historial de pagos -->
+                                <div class="row mt-3">
+                                    <div class="col-md-12">
+                                        <label for="incomeTableSearch" class="form-label">Buscar en el historial</label>
+                                        <input type="text" class="form-control" id="incomeTableSearch" 
+                                               placeholder="Buscar por usuario, tipo de pago, descripción...">
                                     </div>
                                 </div>
                                 <div class="table-responsive table-container">
@@ -1870,84 +1893,7 @@
 
             // Cargar datos desde localStorage
             loadFromLocalStorage();
-            // =============================================
-
-            // FUNCIONES PARA NEON POSTGRESQL - RESPALDOS EN LA NUBE
-            // =============================================
-
-            // Función para respaldar datos en Neon
-            async function backupToNeon(data) {
-                try {
-                    console.log('Iniciando respaldo en Neon...');
-
-                    const response = await fetch('/.netlify/functions/backup-data', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data)
-                    });
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        console.log('✅ Respaldo en Neon exitoso:', result);
-                        showBackupNotification('✅ Respaldo en la nube exitoso');
-                        // Actualizar última sincronización en la UI
-                        document.getElementById('lastCloudSync').textContent = new Date().toLocaleString();
-                        return result;
-                    } else {
-                        console.error('❌ Error en respaldo Neon:', result.error);
-                        showBackupNotification('❌ Error en respaldo en la nube');
-                        return null;
-                    }
-                } catch (error) {
-                    console.error('❌ Error conectando con Neon:', error);
-                    // Silencioso - no afecta la experiencia del usuario
-                    return null;
-                }
-            }
-
-            // Función para restaurar datos desde Neon
-            async function restoreFromNeon() {
-                try {
-                    console.log('Solicitando datos desde Neon...');
-
-                    const response = await fetch('/.netlify/functions/restore-data');
-                    const result = await response.json();
-
-                    if (result.success) {
-                        console.log('✅ Datos restaurados desde Neon:', result);
-                        return result.data;
-                    } else {
-                        console.error('❌ Error restaurando desde Neon:', result.error);
-                        alert('❌ No se pudieron restaurar los datos desde la nube: ' + result.error);
-                        return null;
-                    }
-                } catch (error) {
-                    console.error('❌ Error conectando con Neon:', error);
-                    alert('❌ Error de conexión al restaurar desde la nube');
-                    return null;
-                }
-            }
-
-            // Función para obtener historial de respaldos
-            async function getBackupHistory() {
-                try {
-                    const response = await fetch('/.netlify/functions/backup-history');
-                    const result = await response.json();
-
-                    if (result.success) {
-                        return result.backups;
-                    } else {
-                        console.error('Error obteniendo historial:', result.error);
-                        return [];
-                    }
-                } catch (error) {
-                    console.error('Error obteniendo historial:', error);
-                    return [];
-                }
-            }
+            
             // Configurar validación de teléfonos
             setupPhoneValidation();
 
@@ -2010,6 +1956,7 @@
                     endDateInput.value = endDate.toISOString().split('T')[0];
                 }
             });
+            
             // =============================================
             // EVENT LISTENERS PARA NEON - RESPALDOS EN LA NUBE
             // =============================================
@@ -2244,6 +2191,10 @@
 
             // Configurar búsqueda de usuarios
             searchUserInput.addEventListener('input', filterUsers);
+
+            // MEJORA 1: Configurar búsqueda en tablas
+            document.getElementById('attendanceTableSearch')?.addEventListener('input', filterAttendanceTable);
+            document.getElementById('incomeTableSearch')?.addEventListener('input', filterIncomeTable);
 
             // Configurar evento antes de cerrar la ventana
             window.addEventListener('beforeunload', function (e) {
@@ -2627,12 +2578,93 @@
 
             console.log("Aplicación inicializada correctamente");
 
-            // En la función initializeApp, al final de los event listeners, agrega:
             // Verificar estado inicial de la nube
             setTimeout(() => {
                 document.getElementById('checkCloudStatusBtn').click();
             }, 3000);
         }
+
+        // =============================================
+        // FUNCIONES PARA NEON POSTGRESQL - RESPALDOS EN LA NUBE
+        // =============================================
+
+        // Función para respaldar datos en Neon
+        async function backupToNeon(data) {
+            try {
+                console.log('Iniciando respaldo en Neon...');
+
+                const response = await fetch('/.netlify/functions/backup-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    console.log('✅ Respaldo en Neon exitoso:', result);
+                    showBackupNotification('✅ Respaldo en la nube exitoso');
+                    // Actualizar última sincronización en la UI
+                    document.getElementById('lastCloudSync').textContent = new Date().toLocaleString();
+                    return result;
+                } else {
+                    console.error('❌ Error en respaldo Neon:', result.error);
+                    showBackupNotification('❌ Error en respaldo en la nube');
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ Error conectando con Neon:', error);
+                // Silencioso - no afecta la experiencia del usuario
+                return null;
+            }
+        }
+
+        // Función para restaurar datos desde Neon
+        async function restoreFromNeon() {
+            try {
+                console.log('Solicitando datos desde Neon...');
+
+                const response = await fetch('/.netlify/functions/restore-data');
+                const result = await response.json();
+
+                if (result.success) {
+                    console.log('✅ Datos restaurados desde Neon:', result);
+                    return result.data;
+                } else {
+                    console.error('❌ Error restaurando desde Neon:', result.error);
+                    alert('❌ No se pudieron restaurar los datos desde la nube: ' + result.error);
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ Error conectando con Neon:', error);
+                alert('❌ Error de conexión al restaurar desde la nube');
+                return null;
+            }
+        }
+
+        // Función para obtener historial de respaldos
+        async function getBackupHistory() {
+            try {
+                const response = await fetch('/.netlify/functions/backup-history');
+                const result = await response.json();
+
+                if (result.success) {
+                    return result.backups;
+                } else {
+                    console.error('Error obteniendo historial:', result.error);
+                    return [];
+                }
+            } catch (error) {
+                console.error('Error obteniendo historial:', error);
+                return [];
+            }
+        }
+
+        // =============================================
+        // FUNCIONES PRINCIPALES
+        // =============================================
 
         // Función para cargar datos desde localStorage
         function loadFromLocalStorage() {
@@ -2662,7 +2694,6 @@
             }
         }
 
-        // Función para guardar datos en localStorage
         // Función para guardar datos en localStorage
         function saveToLocalStorage() {
             try {
@@ -2837,6 +2868,42 @@
             });
         }
 
+        // MEJORA 1: Función para filtrar tabla de asistencias
+        function filterAttendanceTable() {
+            const searchText = document.getElementById('attendanceTableSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#attendanceTable tbody tr');
+            
+            rows.forEach(row => {
+                const userName = row.cells[1].textContent.toLowerCase();
+                const userClass = row.cells[2].textContent.toLowerCase();
+                const userStatus = row.cells[3].textContent.toLowerCase();
+                
+                if (userName.includes(searchText) || userClass.includes(searchText) || userStatus.includes(searchText)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // MEJORA 1: Función para filtrar tabla de pagos
+        function filterIncomeTable() {
+            const searchText = document.getElementById('incomeTableSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#incomeTable tbody tr');
+            
+            rows.forEach(row => {
+                const userName = row.cells[1].textContent.toLowerCase();
+                const paymentType = row.cells[3].textContent.toLowerCase();
+                const description = row.cells[5].textContent.toLowerCase();
+                
+                if (userName.includes(searchText) || paymentType.includes(searchText) || description.includes(searchText)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
         // Enviar mensaje por WhatsApp
         function sendWhatsApp(userId, amount, endDate) {
             const user = users.find(u => u.id == userId);
@@ -2971,7 +3038,6 @@
         }
 
         // Crear respaldo automático periódico
-        // Crear respaldo automático periódico
         function createAutoBackup() {
             const backupKey = 'gymSystemBackup';
             const backupData = {
@@ -3001,6 +3067,7 @@
                 });
             }, 1000);
         }
+        
         // Actualizar vista previa del formulario de WhatsApp
         function updateWhatsAppFormPreview() {
             const name = document.getElementById('clientName').value || '[Nombre del cliente]';
@@ -3282,41 +3349,86 @@
             return userPayments[0];
         }
 
-        // MODIFICACIÓN 3: Función para contar clases asistidas desde fecha inicial de pago (paquete 10 clases)
-        function countClassesAttended(userId, startDate) {
-            if (!startDate) return 0;
-            
-            const userAttendance = attendance.filter(a => 
-                a.userId === userId && 
-                a.status === 'presente' &&
-                a.date >= startDate
-            );
-            
-            return userAttendance.length;
-        }
-
-        // MODIFICACIÓN 3: Función para verificar estado de membresía con información de clases asistidas
+        // MEJORA 2: Función para verificar estado de membresía con información de clases asistidas para TODOS los tipos de pago
         function checkMembershipStatus(userId) {
             const user = users.find(u => u.id === userId);
-            if (!user) return { expired: false, daysExpired: 0, classesAttended: 0, totalClasses: 0 };
+            if (!user) return { 
+                expired: false, 
+                daysExpired: 0, 
+                classesAttended: 0, 
+                totalClasses: null, 
+                paymentType: null, 
+                endDate: null, 
+                startDate: null,
+                classesAfterExpiration: 0 // NUEVO: clases después del vencimiento
+            };
             
             const userIncome = income.filter(i => i.userId === userId);
             if (userIncome.length === 0) {
-                return { expired: true, daysExpired: 'N/A', classesAttended: 0, totalClasses: 0 };
+                return { 
+                    expired: true, 
+                    daysExpired: 'N/A', 
+                    classesAttended: 0, 
+                    totalClasses: null, 
+                    paymentType: null, 
+                    endDate: null, 
+                    startDate: null,
+                    classesAfterExpiration: 0
+                };
             }
 
             // Obtener el último pago
             const lastPayment = userIncome.sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
             const today = new Date();
             const endDate = new Date(lastPayment.endDate);
+            const startDate = new Date(lastPayment.startDate);
             
-            // MODIFICACIÓN 3: Contar clases asistidas si es paquete de 10 clases
+            // Contar clases asistidas desde la fecha de inicio hasta hoy
             let classesAttended = 0;
-            let totalClasses = 0;
+            let classesAfterExpiration = 0; // NUEVO: contador para clases después del vencimiento
             
-            if (lastPayment.paymentType === 'paquete 10 clases' || user.affiliationType === 'paquete 10 clases') {
-                classesAttended = countClassesAttended(userId, lastPayment.startDate);
-                totalClasses = 10;
+            if (startDate && endDate) {
+                // Todas las clases desde la fecha de inicio
+                const userAttendance = attendance.filter(a => 
+                    a.userId === userId && 
+                    a.status === 'presente'
+                );
+                
+                userAttendance.forEach(att => {
+                    const attDate = new Date(att.date);
+                    
+                    // Si la asistencia es después de la fecha de inicio del período
+                    if (attDate >= startDate) {
+                        classesAttended++;
+                        
+                        // NUEVO: Si la asistencia es después de la fecha de vencimiento
+                        if (attDate > endDate) {
+                            classesAfterExpiration++;
+                        }
+                    }
+                });
+            }
+            
+            // Determinar total de clases según el tipo de pago
+            let totalClasses = null;
+            const paymentType = lastPayment.paymentType || user.affiliationType;
+            
+            switch(paymentType) {
+                case 'paquete 10 clases':
+                    totalClasses = 10;
+                    break;
+                case 'clase suelta':
+                    totalClasses = 1;
+                    break;
+                case 'mensualidad':
+                    // Estimación: 4 semanas x 6 clases/semana = 24 clases
+                    totalClasses = 24;
+                    break;
+                case 'personalizado Diana':
+                    totalClasses = 12;
+                    break;
+                default:
+                    totalClasses = null;
             }
 
             if (today > endDate) {
@@ -3328,7 +3440,10 @@
                     daysExpired: diffDays, 
                     classesAttended: classesAttended,
                     totalClasses: totalClasses,
-                    endDate: lastPayment.endDate
+                    paymentType: paymentType,
+                    endDate: lastPayment.endDate,
+                    startDate: lastPayment.startDate,
+                    classesAfterExpiration: classesAfterExpiration // NUEVO
                 };
             }
 
@@ -3337,7 +3452,10 @@
                 daysExpired: 0, 
                 classesAttended: classesAttended,
                 totalClasses: totalClasses,
-                endDate: lastPayment.endDate
+                paymentType: paymentType,
+                endDate: lastPayment.endDate,
+                startDate: lastPayment.startDate,
+                classesAfterExpiration: classesAfterExpiration // NUEVO
             };
         }
 
@@ -3366,23 +3484,45 @@
 
                 if (isPresent) presentUsers++;
 
-                // MODIFICACIÓN 3: Verificar si la membresía está vencida con información de clases
+                // MEJORA 2: Verificar estado de membresía para cualquier tipo de pago
                 const membershipStatus = checkMembershipStatus(user.id);
                 
                 // Obtener el último pago del usuario
                 const lastPayment = getLastPayment(user.id);
 
-                // MODIFICACIÓN 3: Crear texto de información de membresía
+                                // MEJORA 2: Crear texto de información de membresía mejorado
                 let membershipInfo = '';
                 if (lastPayment) {
                     membershipInfo = `Vigencia: ${formatDate(lastPayment.startDate)} - ${formatDate(lastPayment.endDate)}`;
                     
-                    // MODIFICACIÓN 3: Agregar información de clases si es paquete de 10 clases vencido
-                    if (membershipStatus.expired && 
-                        (lastPayment.paymentType === 'paquete 10 clases' || user.affiliationType === 'paquete 10 clases')) {
-                        membershipInfo += ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días, ha asistido a ${membershipStatus.classesAttended} clases</span>`;
-                    } else if (membershipStatus.expired) {
-                        membershipInfo += ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días</span>`;
+                    // Mostrar información de clases asistidas independientemente del estado
+                    if (membershipStatus.expired) {
+                        if (membershipStatus.totalClasses !== null) {
+                            membershipInfo += ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días, asistió a ${membershipStatus.classesAttended} de ${membershipStatus.totalClasses} clases (${membershipStatus.paymentType})`;
+                            
+                            // NUEVO: Mostrar clases después del vencimiento si hay
+                            if (membershipStatus.classesAfterExpiration > 0) {
+                                membershipInfo += `, lleva ${membershipStatus.classesAfterExpiration} clases después del vencimiento`;
+                            }
+                            
+                            membershipInfo += `</span>`;
+                        } else {
+                            membershipInfo += ` | <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Vencida hace ${membershipStatus.daysExpired} días, asistió a ${membershipStatus.classesAttended} clases (${membershipStatus.paymentType})`;
+                            
+                            // NUEVO: Mostrar clases después del vencimiento si hay
+                            if (membershipStatus.classesAfterExpiration > 0) {
+                                membershipInfo += `, lleva ${membershipStatus.classesAfterExpiration} clases después del vencimiento`;
+                            }
+                            
+                            membershipInfo += `</span>`;
+                        }
+                    } else {
+                        // Mostrar progreso incluso si no está vencida
+                        if (membershipStatus.totalClasses !== null) {
+                            membershipInfo += ` | Progreso: ${membershipStatus.classesAttended} de ${membershipStatus.totalClasses} clases (${membershipStatus.paymentType})`;
+                        } else {
+                            membershipInfo += ` | Asistencias en período: ${membershipStatus.classesAttended} clases (${membershipStatus.paymentType})`;
+                        }
                     }
                 } else {
                     membershipInfo = 'Sin pago registrado';
@@ -3637,8 +3777,8 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             }
         }
 
-        // Verificar finalización de paquetes
-        function checkPackageCompletion() {
+                // MEJORA 2: Verificar estado de membresía y mostrar información de clases asistidas
+        function checkMembershipAndClasses() {
             const filterUser = document.getElementById('incomeFilterUser').value;
 
             if (!filterUser) {
@@ -3647,32 +3787,43 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             }
 
             const user = users.find(u => u.id == filterUser);
-            if (!user || user.affiliationType !== 'paquete 10 clases') {
+            if (!user) {
                 packageWarning.classList.add('d-none');
                 return;
             }
 
-            // Contar asistencias desde el último pago
-            const lastPayment = income
-                .filter(i => i.userId == filterUser)
-                .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))[0];
-
-            if (!lastPayment) {
-                packageWarning.classList.add('d-none');
-                return;
-            }
-
-            const attendanceCount = attendance.filter(a =>
-                a.userId == filterUser &&
-                a.date >= lastPayment.paymentDate &&
-                a.status === 'presente'
-            ).length;
-
-            if (attendanceCount >= 10) {
-                warningText.textContent = `¡Atención! Este usuario ha completado las 10 clases del paquete.`;
+            // Verificar estado de membresía con la nueva función
+            const membershipStatus = checkMembershipStatus(filterUser);
+            
+            let warningMessage = '';
+            
+            if (membershipStatus.expired) {
+                if (membershipStatus.totalClasses !== null) {
+                    warningMessage = `¡Atención! La membresía de ${user.name} está vencida hace ${membershipStatus.daysExpired} días. Asistió a ${membershipStatus.classesAttended} de ${membershipStatus.totalClasses} clases (${membershipStatus.paymentType}).`;
+                    
+                    // NUEVO: Agregar información de clases después del vencimiento
+                    if (membershipStatus.classesAfterExpiration > 0) {
+                        warningMessage += ` Lleva ${membershipStatus.classesAfterExpiration} clases después del vencimiento.`;
+                    }
+                } else {
+                    warningMessage = `¡Atención! La membresía de ${user.name} está vencida hace ${membershipStatus.daysExpired} días. Asistió a ${membershipStatus.classesAttended} clases en este período (${membershipStatus.paymentType}).`;
+                    
+                    // NUEVO: Agregar información de clases después del vencimiento
+                    if (membershipStatus.classesAfterExpiration > 0) {
+                        warningMessage += ` Lleva ${membershipStatus.classesAfterExpiration} clases después del vencimiento.`;
+                    }
+                }
+                warningText.textContent = warningMessage;
                 packageWarning.classList.remove('d-none');
             } else {
-                packageWarning.classList.add('d-none');
+                // Mostrar progreso incluso si no está vencida
+                if (membershipStatus.totalClasses !== null) {
+                    warningMessage = `${user.name} - Progreso: ${membershipStatus.classesAttended} de ${membershipStatus.totalClasses} clases (${membershipStatus.paymentType})`;
+                } else {
+                    warningMessage = `${user.name} - Asistencias en período: ${membershipStatus.classesAttended} clases (${membershipStatus.paymentType})`;
+                }
+                warningText.textContent = warningMessage;
+                packageWarning.classList.remove('d-none');
             }
         }
 
@@ -3722,7 +3873,8 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             document.getElementById('incomeTotal').textContent = `$${total.toFixed(2)}`;
 
             updateSystemInfo();
-            checkPackageCompletion();
+            // MEJORA 2: Cambiar a nueva función
+            checkMembershipAndClasses();
 
             // Crear respaldo automático después de cargar pagos
             createAutoBackup();
@@ -4415,6 +4567,7 @@ El equipo de Antología Box23`;
                 checkUpcomingBirthdays();
             }, 1000);
         });
+        
         // Manejo de rutas para SPA en GitHub Pages
         (function () {
             var redirect = sessionStorage.redirect;
