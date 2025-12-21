@@ -3493,7 +3493,13 @@
                                 // MEJORA 2: Crear texto de información de membresía mejorado
                 let membershipInfo = '';
                 if (lastPayment) {
-                    membershipInfo = `Vigencia: ${formatDate(lastPayment.startDate)} - ${formatDate(lastPayment.endDate)}`;
+                    //membershipInfo = `Vigencia: ${formatDate(lastPayment.startDate)} - ${formatDate(lastPayment.endDate)}`;
+                    const addOneDay = (date) => {
+                        const d = new Date(date);       // Crear objeto Date
+                        d.setDate(d.getDate() + 1);     // Sumar un día
+                        return d;
+                    };
+                    membershipInfo = `Vigencia: ${formatDate(addOneDay(lastPayment.startDate))} - ${formatDate(addOneDay(lastPayment.endDate))}`;
                     
                     // Mostrar información de clases asistidas independientemente del estado
                     if (membershipStatus.expired) {
@@ -4580,3 +4586,4 @@ El equipo de Antología Box23`;
 </body>
 
 </html>
+
