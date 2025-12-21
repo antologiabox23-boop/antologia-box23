@@ -3434,7 +3434,7 @@
             if (today > endDate) {
                 // Calcular días de vencimiento
                 const diffTime = Math.abs(today - endDate);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
                 return { 
                     expired: true, 
                     daysExpired: diffDays, 
@@ -4586,4 +4586,5 @@ El equipo de Antología Box23`;
 </body>
 
 </html>
+
 
