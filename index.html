@@ -2919,7 +2919,9 @@
             whatsappNumber.value = cleanPhone(user.phone);
 
             // MODIFICACIÓN 1: Crear mensaje predeterminado con formato corregido
-            const message = `Hola ${user.name}, tu pago en Antologia Box23 por un valor de $${amount} ha sido registrado. Tu membresía es válida hasta el ${endDate}. ¡Gracias por tu preferencia!`;
+            const message = `Hola ${user.name}, tu pago en Antologia Box23 por un valor de *_$${amount}_* ha sido registrado.
+            
+            Tu membresía es válida hasta el *_${endDate}_*. ¡Gracias por tu preferencia!`;
             whatsappMessage.value = message;
             messagePreview.textContent = message;
 
@@ -4586,6 +4588,7 @@ El equipo de Antología Box23`;
 </body>
 
 </html>
+
 
 
 
