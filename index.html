@@ -1692,7 +1692,6 @@
                                                         <th>Usuario</th>
                                                         <th>Teléfono</th>
                                                         <th>Asistencias</th>
-                                                        <th>Último Pago</th>
                                                         <th>Vigencia Pago</th>
                                                         <th>Tipo Pago</th>
                                                         <th>Valor Último Pago</th> <!-- Nueva columna -->
@@ -4171,7 +4170,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                 row.innerHTML = `
                     <td>${user.name}</td>
                     <td>${user.phone || '-'}</td>
-                    <td>${lastPaymentDate}</td>
+                    <td><strong>${userAttendance}</strong>&nbsp;asistencias</td>
                     <td>${paymentValidity}</td>
                     <td>${paymentType}</td>
                     <td>${paymentAmount}</td> <!-- Nueva celda -->
