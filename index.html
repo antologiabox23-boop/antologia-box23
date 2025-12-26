@@ -628,6 +628,65 @@
             gap: 10px;
         }
 
+        /* Estilos para los nuevos reportes mensuales */
+        .monthly-report-card {
+            border: 2px solid var(--color-primary);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .monthly-report-header {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+            color: var(--color-dark);
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .monthly-report-body {
+            padding: 20px;
+            background-color: var(--color-dark);
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .report-user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .report-user-item:last-child {
+            border-bottom: none;
+        }
+        
+        .report-user-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .report-user-count {
+            font-weight: bold;
+            color: var(--color-primary);
+            min-width: 60px;
+            text-align: right;
+        }
+        
+        .report-type-badge {
+            background-color: rgba(39, 249, 212, 0.2);
+            color: var(--color-primary);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .report-month-selector {
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
         @media (max-width: 768px) {
             .attendance-stats {
                 flex-direction: column;
@@ -668,6 +727,16 @@
             .absence-alert-actions {
                 width: 100%;
                 justify-content: flex-start;
+            }
+            
+            .report-user-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .report-user-count {
+                align-self: flex-end;
             }
         }
     </style>
@@ -1501,7 +1570,7 @@
                 </div>
             </div>
 
-            <!-- Sección de Reportes -->
+            <!-- Sección de Reportes - MEJORADA -->
             <div class="tab-pane fade" id="reports" role="tabpanel">
                 <div class="row">
                     <div class="col-md-12">
@@ -1573,49 +1642,115 @@
                                     </div>
                                 </div>
 
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="card-title mb-0">Reporte detallado</h5>
+                                <!-- NUEVO: Informe de Asistencias Mensuales por Usuario -->
+                                <div class="monthly-report-card mb-4">
+                                    <div class="monthly-report-header">
+                                        <h5 class="mb-0"><i class="fas fa-user-check"></i> Informe de Asistencias Mensuales por Usuario</h5>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="row mb-3">
-                                            <div class="col-md-3">
-                                                <label for="reportStartDate" class="form-label">Fecha inicial</label>
-                                                <input type="date" class="form-control" id="reportStartDate">
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label for="reportEndDate" class="form-label">Fecha final</label>
-                                                <input type="date" class="form-control" id="reportEndDate">
-                                            </div>
-                                            <div class="col-md-3">
-                                                <label for="reportType" class="form-label">Tipo de reporte</label>
-                                                <select class="form-select" id="reportType">
-                                                    <option value="attendance">Asistencias</option>
-                                                    <option value="income">Pagos</option>
-                                                    <option value="users">Usuarios</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3 d-flex align-items-end">
-                                                <button class="btn btn-primary w-100" id="generateReportBtn">
-                                                    <i class="fas fa-download"></i> Generar Reporte
-                                                </button>
+                                    <div class="monthly-report-body">
+                                        <div class="report-month-selector">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label for="attendanceMonth" class="form-label">Seleccionar mes</label>
+                                                    <input type="month" class="form-control" id="attendanceMonth" 
+                                                           value="<?php echo date('Y-m'); ?>">
+                                                </div>
+                                                <div class="col-md-4 d-flex align-items-end">
+                                                    <button class="btn btn-primary w-100" id="generateAttendanceReport">
+                                                        <i class="fas fa-chart-bar"></i> Generar Informe
+                                                    </button>
+                                                </div>
+                                                <div class="col-md-4 d-flex align-items-end">
+                                                    <button class="btn btn-success w-100" id="exportAttendanceReport">
+                                                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="table-responsive table-container">
-                                            <table class="table table-striped table-hover" id="reportTable">
+                                            <table class="table table-striped table-hover" id="attendanceMonthlyTable">
                                                 <thead>
                                                     <tr>
-                                                        <th>Fecha</th>
-                                                        <th>Descripción</th>
+                                                        <th>#</th>
                                                         <th>Usuario</th>
-                                                        <th>Monto/Estado</th>
-                                                        <th>Detalles</th>
+                                                        <th>Clase</th>
+                                                        <th>Asistencias</th>
+                                                        <th>% Asistencia</th>
+                                                        <th>Última asistencia</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody id="reportList">
-                                                    <!-- Los reportes se cargarán aquí dinámicamente -->
+                                                <tbody id="attendanceMonthlyList">
+                                                    <tr>
+                                                        <td colspan="6" class="text-center text-muted">
+                                                            Seleccione un mes y haga clic en "Generar Informe"
+                                                        </td>
+                                                    </tr>
                                                 </tbody>
                                             </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- NUEVO: Informe de Pagos Mensuales por Tipo -->
+                                <div class="monthly-report-card">
+                                    <div class="monthly-report-header">
+                                        <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> Informe de Pagos Mensuales por Tipo</h5>
+                                    </div>
+                                    <div class="monthly-report-body">
+                                        <div class="report-month-selector">
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label for="incomeMonth" class="form-label">Seleccionar mes</label>
+                                                    <input type="month" class="form-control" id="incomeMonth" 
+                                                           value="<?php echo date('Y-m'); ?>">
+                                                </div>
+                                                <div class="col-md-4 d-flex align-items-end">
+                                                    <button class="btn btn-primary w-100" id="generateIncomeReport">
+                                                        <i class="fas fa-chart-pie"></i> Generar Informe
+                                                    </button>
+                                                </div>
+                                                <div class="col-md-4 d-flex align-items-end">
+                                                    <button class="btn btn-success w-100" id="exportIncomeReport">
+                                                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="chart-container">
+                                                    <canvas id="incomeMonthlyChart"></canvas>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="table-responsive table-container">
+                                                    <table class="table table-striped table-hover" id="incomeMonthlyTable">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Tipo de Pago</th>
+                                                                <th>Cantidad</th>
+                                                                <th>Monto Total</th>
+                                                                <th>% del Total</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="incomeMonthlyList">
+                                                            <tr>
+                                                                <td colspan="4" class="text-center text-muted">
+                                                                    Seleccione un mes y haga clic en "Generar Informe"
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                        <tfoot>
+                                                            <tr class="total-row">
+                                                                <td><strong>TOTAL</strong></td>
+                                                                <td><strong id="totalPaymentsCount">0</strong></td>
+                                                                <td><strong id="totalPaymentsAmount">$0.00</strong></td>
+                                                                <td><strong>100%</strong></td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1836,56 +1971,10 @@
         // Clases disponibles
         const classTimes = ["5:00 am", "6:00 am", "7:00 am", "8:00 am", "4:00 pm", "5:30 pm", "6:30 pm", "7:30 pm"];
 
-        // Elementos DOM
-        const userForm = document.getElementById('userForm');
-        const incomeForm = document.getElementById('incomeForm');
-        const usersList = document.getElementById('usersList');
-        const attendanceList = document.getElementById('attendanceList');
-        const incomeList = document.getElementById('incomeList');
-        const userSelect = document.getElementById('incomeUserSelect');
-        const incomeFilterUser = document.getElementById('incomeFilterUser');
-        const exportBtn = document.getElementById('exportBtn');
-        const saveAttendanceBtn = document.getElementById('saveAttendance');
-        const packageWarning = document.getElementById('packageWarning');
-        const warningText = document.getElementById('warningText');
-        const backupDataBtn = document.getElementById('backupData');
-        const restoreDataBtn = document.getElementById('restoreData');
-        const restoreFileInput = document.getElementById('restoreFile');
-        const selectedFileName = document.getElementById('selectedFileName');
-        const replaceDataCheckbox = document.getElementById('replaceData');
-        const autorestoreSection = document.getElementById('autorestoreSection');
-        const restoreAutoBtn = document.getElementById('restoreAutoBtn');
-        const skipRestoreBtn = document.getElementById('skipRestoreBtn');
-        const startDateInput = document.getElementById('startDate');
-        const endDateInput = document.getElementById('endDate');
-        const autoBackupCheckbox = document.getElementById('autoBackupCheckbox');
-        const backupNotification = document.getElementById('backupNotification');
-        const backupNotificationText = document.getElementById('backupNotificationText');
-        const openWhatsAppFormBtn = document.getElementById('openWhatsAppForm');
-        const sendConfirmationBtn = document.getElementById('sendConfirmationBtn');
-        const whatsappNumber = document.getElementById('whatsappNumber');
-        const whatsappMessage = document.getElementById('whatsappMessage');
-        const messagePreview = document.getElementById('messagePreview');
-        const whatsappLink = document.getElementById('whatsappLink');
-        const searchUserInput = document.getElementById('searchUserInput');
-        const refreshAttendanceBtn = document.getElementById('refreshAttendance');
-        const markAllPresentBtn = document.getElementById('markAllPresent');
-        const clearAllAttendanceBtn = document.getElementById('clearAllAttendance');
-        const totalUsersCount = document.getElementById('totalUsersCount');
-        const presentUsersCount = document.getElementById('presentUsersCount');
-        const pendingUsersCount = document.getElementById('pendingUsersCount');
-        const importSummaryModal = document.getElementById('importSummaryModal');
-        const importSummaryContent = document.getElementById('importSummaryContent');
-        const confirmImportBtn = document.getElementById('confirmImportBtn');
-        const showBirthdaysThisMonthBtn = document.getElementById('showBirthdaysThisMonth');
-        const sendBirthdayWishesBtn = document.getElementById('sendBirthdayWishes');
-        const birthdayModalTitle = document.getElementById('birthdayModalTitle');
-        const birthdayContent = document.getElementById('birthdayContent');
-        const absenceAlertsList = document.getElementById('absenceAlertsList');
-
         // Variables para gráficos
         let affiliationChart = null;
         let attendanceChart = null;
+        let incomeMonthlyChart = null;
 
         // Inicializar la aplicación
         function initializeApp() {
@@ -1902,10 +1991,10 @@
             document.getElementById('attendanceDate').value = today;
 
             // Establecer fechas inicial y final para pagos (hoy y 30 días después)
-            startDateInput.value = today;
+            document.getElementById('startDate').value = today;
             const endDate = new Date();
             endDate.setDate(endDate.getDate() + 30);
-            endDateInput.value = endDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
 
             // Configurar fecha inicial para filtros (inicio del mes)
             const firstDayOfMonth = new Date();
@@ -1916,8 +2005,6 @@
             document.getElementById('attendanceEndDateFilter').value = today;
             document.getElementById('incomeStartDateFilter').value = firstDayStr;
             document.getElementById('incomeEndDateFilter').value = today;
-            document.getElementById('reportStartDate').value = firstDayStr;
-            document.getElementById('reportEndDate').value = today;
 
             // Cargar datos
             loadUsers();
@@ -1925,11 +2012,10 @@
             loadAttendance();
             loadIncome();
             updateSystemInfo();
-            loadReports();
 
             // Configurar respaldo automático si estaba activado
             if (localStorage.getItem('autoBackupEnabled') === 'true') {
-                autoBackupCheckbox.checked = true;
+                document.getElementById('autoBackupCheckbox').checked = true;
                 startAutoBackup();
             }
 
@@ -1944,16 +2030,19 @@
             });
 
             document.getElementById('reports-tab').addEventListener('click', function () {
-                loadReports();
+                // Actualizar gráficos al cambiar a reportes
+                setTimeout(() => {
+                    updateCharts();
+                }, 100);
             });
 
             // Evento para cambio de fecha inicial en pagos
-            startDateInput.addEventListener('change', function () {
-                if (startDateInput.value) {
-                    const startDate = new Date(startDateInput.value);
+            document.getElementById('startDate').addEventListener('change', function () {
+                if (this.value) {
+                    const startDate = new Date(this.value);
                     const endDate = new Date(startDate);
                     endDate.setDate(startDate.getDate() + 30);
-                    endDateInput.value = endDate.toISOString().split('T')[0];
+                    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
                 }
             });
             
@@ -2050,7 +2139,7 @@
             });
 
             // Evento para respaldo automático
-            autoBackupCheckbox.addEventListener('change', function () {
+            document.getElementById('autoBackupCheckbox').addEventListener('change', function () {
                 if (this.checked) {
                     startAutoBackup();
                     localStorage.setItem('autoBackupEnabled', 'true');
@@ -2061,7 +2150,7 @@
             });
 
             // Evento para formulario de WhatsApp
-            openWhatsAppFormBtn.addEventListener('click', function () {
+            document.getElementById('openWhatsAppForm').addEventListener('click', function () {
                 const whatsappFormModal = new bootstrap.Modal(document.getElementById('whatsappFormModal'));
                 whatsappFormModal.show();
             });
@@ -2074,7 +2163,7 @@
             document.getElementById('includeGoogleForm').addEventListener('change', updateWhatsAppFormPreview);
 
             // Configurar envío de confirmación de pago
-            sendConfirmationBtn.addEventListener('click', function () {
+            document.getElementById('sendConfirmationBtn').addEventListener('click', function () {
                 if (!pendingPaymentData) {
                     alert('No hay datos de pago pendientes.');
                     return;
@@ -2125,14 +2214,14 @@
                 paymentModal.hide();
 
                 // Resetear el formulario
-                incomeForm.reset();
+                document.getElementById('incomeForm').reset();
 
                 // Restablecer fechas por defecto
                 const today = new Date().toISOString().split('T')[0];
-                startDateInput.value = today;
+                document.getElementById('startDate').value = today;
                 const endDate = new Date();
                 endDate.setDate(endDate.getDate() + 30);
-                endDateInput.value = endDate.toISOString().split('T')[0];
+                document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
 
                 // Limpiar datos pendientes
                 pendingPaymentData = null;
@@ -2152,14 +2241,14 @@
                         loadIncome();
 
                         // Resetear el formulario
-                        incomeForm.reset();
+                        document.getElementById('incomeForm').reset();
 
                         // Restablecer fechas por defecto
                         const today = new Date().toISOString().split('T')[0];
-                        startDateInput.value = today;
+                        document.getElementById('startDate').value = today;
                         const endDate = new Date();
                         endDate.setDate(endDate.getDate() + 30);
-                        endDateInput.value = endDate.toISOString().split('T')[0];
+                        document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
                     }
 
                     // Limpiar datos pendientes
@@ -2168,7 +2257,7 @@
             });
 
             // Eventos para WhatsApp
-            whatsappNumber.addEventListener('input', function () {
+            document.getElementById('whatsappNumber').addEventListener('input', function () {
                 if (this.value && !isValidPhone(this.value)) {
                     document.getElementById('whatsappPhoneError').style.display = 'block';
                     this.classList.add('validation-error');
@@ -2179,18 +2268,17 @@
                 updateWhatsAppLink();
             });
 
-            whatsappMessage.addEventListener('input', function () {
-                messagePreview.textContent = this.value;
+            document.getElementById('whatsappMessage').addEventListener('input', function () {
+                document.getElementById('messagePreview').textContent = this.value;
                 updateWhatsAppLink();
             });
 
             // Configurar eventos de filtrado
             document.getElementById('filterAttendanceBtn').addEventListener('click', loadAttendance);
             document.getElementById('filterIncomeBtn').addEventListener('click', loadIncome);
-            document.getElementById('generateReportBtn').addEventListener('click', loadReports);
 
             // Configurar búsqueda de usuarios
-            searchUserInput.addEventListener('input', filterUsers);
+            document.getElementById('searchUserInput').addEventListener('input', filterUsers);
 
             // MEJORA 1: Configurar búsqueda en tablas
             document.getElementById('attendanceTableSearch')?.addEventListener('input', filterAttendanceTable);
@@ -2207,11 +2295,11 @@
             });
 
             // Eventos para la nueva sección de asistencias
-            refreshAttendanceBtn.addEventListener('click', function () {
+            document.getElementById('refreshAttendance').addEventListener('click', function () {
                 loadAttendanceByClass();
             });
 
-            markAllPresentBtn.addEventListener('click', function () {
+            document.getElementById('markAllPresent').addEventListener('click', function () {
                 const checkboxes = document.querySelectorAll('.attendance-checkbox');
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = true;
@@ -2219,7 +2307,7 @@
                 updateAttendanceStats();
             });
 
-            clearAllAttendanceBtn.addEventListener('click', function () {
+            document.getElementById('clearAllAttendance').addEventListener('click', function () {
                 const checkboxes = document.querySelectorAll('.attendance-checkbox');
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = false;
@@ -2235,12 +2323,12 @@
             document.getElementById('attendanceSearchInput').addEventListener('input', filterAttendanceUsers);
 
             // Evento para confirmar importación
-            confirmImportBtn.addEventListener('click', function () {
+            document.getElementById('confirmImportBtn').addEventListener('click', function () {
                 confirmImport();
             });
 
             // Evento para restaurar datos
-            restoreDataBtn.addEventListener('click', function () {
+            document.getElementById('restoreData').addEventListener('click', function () {
                 // El preprocesamiento ya se hizo al seleccionar el archivo
                 // Solo necesitamos asegurarnos de que hay datos para importar
                 if (importData.users.length === 0 &&
@@ -2254,7 +2342,7 @@
             });
 
             // Evento para exportar a Excel
-            exportBtn.addEventListener('click', function () {
+            document.getElementById('exportBtn').addEventListener('click', function () {
                 // Preparar datos para exportar
                 let workbook = XLSX.utils.book_new();
 
@@ -2287,7 +2375,7 @@
             });
 
             // Evento para respaldo de datos
-            backupDataBtn.addEventListener('click', function () {
+            document.getElementById('backupData').addEventListener('click', function () {
                 if (confirm('¿Está seguro de que desea descargar un respaldo completo de todos los datos?')) {
                     // Crear un libro de trabajo con todas las hojas
                     let workbook = XLSX.utils.book_new();
@@ -2375,7 +2463,7 @@
             });
 
             // Evento para restaurar automáticamente
-            restoreAutoBtn.addEventListener('click', function () {
+            document.getElementById('restoreAutoBtn').addEventListener('click', function () {
                 // Restaurar desde el respaldo automático
                 const backupKey = 'gymSystemBackup';
                 const autoBackup = localStorage.getItem(backupKey);
@@ -2398,7 +2486,6 @@
                             loadAttendance();
                             loadIncome();
                             updateSystemInfo();
-                            loadReports();
 
                             alert('Datos restaurados correctamente desde el respaldo automático.');
                         } else {
@@ -2412,21 +2499,21 @@
                 }
 
                 // Ocultar sección de restauración automática
-                autorestoreSection.classList.add('d-none');
+                document.getElementById('autorestoreSection').classList.add('d-none');
             });
 
             // Evento para saltar restauración automática
-            skipRestoreBtn.addEventListener('click', function () {
+            document.getElementById('skipRestoreBtn').addEventListener('click', function () {
                 // Ocultar sección de restauración automática
-                autorestoreSection.classList.add('d-none');
+                document.getElementById('autorestoreSection').classList.add('d-none');
             });
 
             // Evento para selección de archivo de restauración
-            restoreFileInput.addEventListener('change', function (e) {
+            document.getElementById('restoreFile').addEventListener('change', function (e) {
                 const file = e.target.files[0];
                 if (file) {
-                    selectedFileName.textContent = file.name;
-                    restoreDataBtn.disabled = false;
+                    document.getElementById('selectedFileName').textContent = file.name;
+                    document.getElementById('restoreData').disabled = false;
 
                     // Leer el archivo inmediatamente para preprocesar
                     const reader = new FileReader();
@@ -2440,7 +2527,7 @@
                                 !workbook.SheetNames.includes('Asistencias') ||
                                 !workbook.SheetNames.includes('Pagos')) {
                                 alert('El archivo seleccionado no es un respaldo válido del sistema.');
-                                restoreDataBtn.disabled = true;
+                                document.getElementById('restoreData').disabled = true;
                                 return;
                             }
 
@@ -2450,18 +2537,18 @@
                         } catch (error) {
                             console.error('Error al leer el archivo:', error);
                             alert('Error al leer el archivo. Asegúrese de que es un archivo Excel válido.');
-                            restoreDataBtn.disabled = true;
+                            document.getElementById('restoreData').disabled = true;
                         }
                     };
                     reader.readAsArrayBuffer(file);
                 } else {
-                    selectedFileName.textContent = 'Ningún archivo seleccionado';
-                    restoreDataBtn.disabled = true;
+                    document.getElementById('selectedFileName').textContent = 'Ningún archivo seleccionado';
+                    document.getElementById('restoreData').disabled = true;
                 }
             });
 
             // Evento para formulario de usuario
-            userForm.addEventListener('submit', function (e) {
+            document.getElementById('userForm').addEventListener('submit', function (e) {
                 e.preventDefault();
 
                 // Validar teléfonos
@@ -2499,22 +2586,22 @@
                 saveToLocalStorage();
 
                 loadUsers();
-                userForm.reset();
+                document.getElementById('userForm').reset();
 
                 // Mostrar mensaje de éxito
                 alert('Usuario registrado correctamente!');
             });
 
             // Evento para formulario de ingresos
-            incomeForm.addEventListener('submit', function (e) {
+            document.getElementById('incomeForm').addEventListener('submit', function (e) {
                 e.preventDefault();
 
                 // Recoger los datos del formulario pero no guardarlos todavía
                 pendingPaymentData = {
-                    userId: userSelect.value,
+                    userId: document.getElementById('incomeUserSelect').value,
                     paymentDate: new Date().toISOString().split('T')[0],
-                    startDate: startDateInput.value,
-                    endDate: endDateInput.value,
+                    startDate: document.getElementById('startDate').value,
+                    endDate: document.getElementById('endDate').value,
                     // MODIFICACIÓN 2: Cambiar paymentMethod por paymentType
                     paymentType: document.getElementById('paymentType').value,
                     amount: parseFloat(document.getElementById('amount').value).toFixed(2),
@@ -2534,7 +2621,7 @@
             });
 
             // Evento para guardar asistencias
-            saveAttendanceBtn.addEventListener('click', function () {
+            document.getElementById('saveAttendance').addEventListener('click', function () {
                 const attendanceDate = document.getElementById('attendanceDate').value;
                 const checkboxes = document.querySelectorAll('.attendance-checkbox');
                 let savedCount = 0;
@@ -2567,13 +2654,30 @@
             });
 
             // Evento para mostrar cumpleaños del mes
-            showBirthdaysThisMonthBtn.addEventListener('click', function () {
+            document.getElementById('showBirthdaysThisMonth').addEventListener('click', function () {
                 showBirthdays('month');
             });
 
             // Evento para enviar felicitaciones de cumpleaños
-            sendBirthdayWishesBtn.addEventListener('click', function () {
+            document.getElementById('sendBirthdayWishes').addEventListener('click', function () {
                 sendBirthdayWishes();
+            });
+
+            // NUEVOS EVENTOS PARA REPORTES MEJORADOS
+            document.getElementById('generateAttendanceReport').addEventListener('click', function() {
+                generateAttendanceMonthlyReport();
+            });
+
+            document.getElementById('generateIncomeReport').addEventListener('click', function() {
+                generateIncomeMonthlyReport();
+            });
+
+            document.getElementById('exportAttendanceReport').addEventListener('click', function() {
+                exportAttendanceReport();
+            });
+
+            document.getElementById('exportIncomeReport').addEventListener('click', function() {
+                exportIncomeReport();
             });
 
             console.log("Aplicación inicializada correctamente");
@@ -2916,14 +3020,14 @@
             }
 
             // Rellenar el formulario de WhatsApp
-            whatsappNumber.value = cleanPhone(user.phone);
+            document.getElementById('whatsappNumber').value = cleanPhone(user.phone);
 
             // MODIFICACIÓN 1: Crear mensaje predeterminado con formato corregido
             const message = `Hola ${user.name}, tu pago en Antologia Box23 por un valor de *_$${amount}_* ha sido registrado.
             
             Tu membresía es válida hasta el *_${endDate}_*. ¡Gracias por tu preferencia!`;
-            whatsappMessage.value = message;
-            messagePreview.textContent = message;
+            document.getElementById('whatsappMessage').value = message;
+            document.getElementById('messagePreview').textContent = message;
 
             // Actualizar enlace de WhatsApp
             updateWhatsAppLink();
@@ -2935,18 +3039,18 @@
 
         // Actualizar enlace de WhatsApp
         function updateWhatsAppLink() {
-            const phone = cleanPhone(whatsappNumber.value);
-            const message = whatsappMessage.value;
+            const phone = cleanPhone(document.getElementById('whatsappNumber').value);
+            const message = document.getElementById('whatsappMessage').value;
 
             if (phone && message) {
                 const encodedMessage = encodeURIComponent(message);
-                whatsappLink.href = `https://wa.me/57${phone}?text=${encodedMessage}`;
+                document.getElementById('whatsappLink').href = `https://wa.me/57${phone}?text=${encodedMessage}`;
             }
         }
 
         // Filtrar usuarios en la tabla
         function filterUsers() {
-            const searchText = searchUserInput.value.toLowerCase();
+            const searchText = document.getElementById('searchUserInput').value.toLowerCase();
             const userRows = document.querySelectorAll('#usersList tr');
 
             userRows.forEach(row => {
@@ -3000,7 +3104,7 @@
                         // Verificar que backupData tenga la estructura esperada
                         if (backupData.users && backupData.attendance && backupData.income) {
                             // Mostrar sección de restauración automática
-                            autorestoreSection.classList.remove('d-none');
+                            document.getElementById('autorestoreSection').classList.remove('d-none');
                         }
                     } catch (e) {
                         console.error('Error al analizar el respaldo automático:', e);
@@ -3031,11 +3135,11 @@
 
         // Mostrar notificación de respaldo
         function showBackupNotification(message) {
-            backupNotificationText.textContent = message;
-            backupNotification.style.display = 'block';
+            document.getElementById('backupNotificationText').textContent = message;
+            document.getElementById('backupNotification').style.display = 'block';
 
             setTimeout(function () {
-                backupNotification.style.display = 'none';
+                document.getElementById('backupNotification').style.display = 'none';
             }, 5000);
         }
 
@@ -3193,7 +3297,9 @@
 
         // Cargar lista de usuarios
         function loadUsers() {
+            const usersList = document.getElementById('usersList');
             usersList.innerHTML = '';
+            
             users.forEach(user => {
                 const statusBadge = user.status === 'active'
                     ? '<span class="badge bg-success user-status-badge">Activo</span>'
@@ -3492,10 +3598,9 @@
                 // Obtener el último pago del usuario
                 const lastPayment = getLastPayment(user.id);
 
-                                // MEJORA 2: Crear texto de información de membresía mejorado
+                // MEJORA 2: Crear texto de información de membresía mejorado
                 let membershipInfo = '';
                 if (lastPayment) {
-                    //membershipInfo = `Vigencia: ${formatDate(lastPayment.startDate)} - ${formatDate(lastPayment.endDate)}`;
                     const addOneDay = (date) => {
                         const d = new Date(date);       // Crear objeto Date
                         d.setDate(d.getDate() + 1);     // Sumar un día
@@ -3562,9 +3667,9 @@
             });
 
             // Actualizar estadísticas
-            totalUsersCount.textContent = totalUsers;
-            presentUsersCount.textContent = presentUsers;
-            pendingUsersCount.textContent = totalUsers - presentUsers;
+            document.getElementById('totalUsersCount').textContent = totalUsers;
+            document.getElementById('presentUsersCount').textContent = presentUsers;
+            document.getElementById('pendingUsersCount').textContent = totalUsers - presentUsers;
 
             // Agregar event listeners a los checkboxes
             document.querySelectorAll('.attendance-checkbox').forEach(checkbox => {
@@ -3583,12 +3688,13 @@
             const totalCheckboxes = document.querySelectorAll('.attendance-checkbox').length;
             const presentCheckboxes = document.querySelectorAll('.attendance-checkbox:checked').length;
 
-            presentUsersCount.textContent = presentCheckboxes;
-            pendingUsersCount.textContent = totalCheckboxes - presentCheckboxes;
+            document.getElementById('presentUsersCount').textContent = presentCheckboxes;
+            document.getElementById('pendingUsersCount').textContent = totalCheckboxes - presentCheckboxes;
         }
 
         // Función para verificar inasistencias consecutivas
         function checkConsecutiveAbsences() {
+            const absenceAlertsList = document.getElementById('absenceAlertsList');
             absenceAlertsList.innerHTML = '';
 
             const activeUsers = users.filter(user =>
@@ -3660,7 +3766,7 @@
             }
 
             // Rellenar el formulario de WhatsApp
-            whatsappNumber.value = cleanPhone(user.phone);
+            document.getElementById('whatsappNumber').value = cleanPhone(user.phone);
 
             // Crear mensaje de recordatorio personalizado
             const lastAttendance = attendance
@@ -3679,8 +3785,8 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
 
 💪 El equipo de Antología Box23`;
 
-            whatsappMessage.value = message;
-            messagePreview.textContent = message;
+            document.getElementById('whatsappMessage').value = message;
+            document.getElementById('messagePreview').textContent = message;
 
             // Actualizar enlace de WhatsApp
             updateWhatsAppLink();
@@ -3706,7 +3812,9 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
 
         // Cargar lista de asistencias
         function loadAttendance() {
+            const attendanceList = document.getElementById('attendanceList');
             attendanceList.innerHTML = '';
+            
             const startDate = document.getElementById('attendanceStartDateFilter').value;
             const endDate = document.getElementById('attendanceEndDateFilter').value;
             const userId = document.getElementById('attendanceUserFilter').value;
@@ -3785,18 +3893,18 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             }
         }
 
-                // MEJORA 2: Verificar estado de membresía y mostrar información de clases asistidas
+        // MEJORA 2: Verificar estado de membresía y mostrar información de clases asistidas
         function checkMembershipAndClasses() {
             const filterUser = document.getElementById('incomeFilterUser').value;
 
             if (!filterUser) {
-                packageWarning.classList.add('d-none');
+                document.getElementById('packageWarning').classList.add('d-none');
                 return;
             }
 
             const user = users.find(u => u.id == filterUser);
             if (!user) {
-                packageWarning.classList.add('d-none');
+                document.getElementById('packageWarning').classList.add('d-none');
                 return;
             }
 
@@ -3821,8 +3929,8 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                         warningMessage += ` Lleva ${membershipStatus.classesAfterExpiration} clases después del vencimiento.`;
                     }
                 }
-                warningText.textContent = warningMessage;
-                packageWarning.classList.remove('d-none');
+                document.getElementById('warningText').textContent = warningMessage;
+                document.getElementById('packageWarning').classList.remove('d-none');
             } else {
                 // Mostrar progreso incluso si no está vencida
                 if (membershipStatus.totalClasses !== null) {
@@ -3830,14 +3938,16 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                 } else {
                     warningMessage = `${user.name} - Asistencias en período: ${membershipStatus.classesAttended} clases (${membershipStatus.paymentType})`;
                 }
-                warningText.textContent = warningMessage;
-                packageWarning.classList.remove('d-none');
+                document.getElementById('warningText').textContent = warningMessage;
+                document.getElementById('packageWarning').classList.remove('d-none');
             }
         }
 
         // Cargar lista de pagos
         function loadIncome() {
+            const incomeList = document.getElementById('incomeList');
             incomeList.innerHTML = '';
+            
             const startDate = document.getElementById('incomeStartDateFilter').value;
             const endDate = document.getElementById('incomeEndDateFilter').value;
             const userId = document.getElementById('incomeFilterUser').value;
@@ -3888,98 +3998,369 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             createAutoBackup();
         }
 
-        // Cargar reportes
-        function loadReports() {
-            const startDate = document.getElementById('reportStartDate').value;
-            const endDate = document.getElementById('reportEndDate').value;
-            const reportType = document.getElementById('reportType').value;
-
-            // Actualizar estadísticas generales
-            const activeUsers = users.filter(u => u.status === 'active').length;
-            document.getElementById('reportTotalUsers').textContent = activeUsers;
-
-            // Calcular ingresos del mes actual
-            const currentDate = new Date();
-            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
-            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
-
-            const monthlyIncome = income
-                .filter(i => i.paymentDate >= firstDay && i.paymentDate <= lastDay)
-                .reduce((sum, record) => sum + parseFloat(record.amount), 0);
-
-            document.getElementById('reportTotalIncome').textContent = `$${monthlyIncome.toFixed(2)}`;
-
-            // Calcular tasa de asistencia
-            const totalAttendance = attendance.filter(a => a.status === 'presente').length;
-            const possibleAttendance = activeUsers * 20; // Estimación de 20 días por mes
-            const attendanceRate = possibleAttendance > 0 ? Math.round((totalAttendance / possibleAttendance) * 100) : 0;
-            document.getElementById('reportAttendanceRate').textContent = `${attendanceRate}%`;
-
-            // Calcular paquetes completados
-            const packagesCompleted = users.filter(u => u.affiliationType === 'paquete 10 clases').length;
-            document.getElementById('reportPackagesCompleted').textContent = packagesCompleted;
-
-            // Cargar datos del reporte según el tipo seleccionado
-            const reportList = document.getElementById('reportList');
-            reportList.innerHTML = '';
-
-            if (reportType === 'attendance') {
-                // Reporte de asistencias
-                let filteredAttendance = attendance;
-
-                if (startDate && endDate) {
-                    filteredAttendance = filteredAttendance.filter(a => a.date >= startDate && a.date <= endDate);
-                }
-
-                filteredAttendance.forEach(record => {
-                    const user = users.find(u => u.id == record.userId) || { name: 'Usuario eliminado' };
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${record.date}</td>
-                        <td>Asistencia registrada</td>
-                        <td>${user.name}</td>
-                        <td><span class="badge bg-success">${record.status}</span></td>
-                        <td>Clase: ${user.classTime || 'N/A'}</td>
-                    `;
-                    reportList.appendChild(row);
-                });
-            } else if (reportType === 'income') {
-                // Reporte de pagos
-                let filteredIncome = income;
-
-                if (startDate && endDate) {
-                    filteredIncome = filteredIncome.filter(i => i.paymentDate >= startDate && i.paymentDate <= endDate);
-                }
-
-                filteredIncome.forEach(record => {
-                    const user = users.find(u => u.id == record.userId) || { name: 'Usuario eliminado' };
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${record.paymentDate}</td>
-                        <td>Pago registrado - ${record.description || 'Sin descripción'}</td>
-                        <td>${user.name}</td>
-                        <td>$${parseFloat(record.amount).toFixed(2)}</td>
-                        <td>Tipo: ${record.paymentType || 'N/A'}, Válido hasta: ${record.endDate}</td>
-                    `;
-                    reportList.appendChild(row);
-                });
-            } else {
-                // Reporte de usuarios
-                users.forEach(user => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${new Date(user.createdAt).toLocaleDateString()}</td>
-                        <td>Usuario registrado</td>
-                        <td>${user.name}</td>
-                        <td>${user.affiliationType}</td>
-                        <td>Documento: ${user.document}, Tel: ${user.phone}</td>
-                    `;
-                    reportList.appendChild(row);
-                });
+        // NUEVA: Función para generar informe de asistencias mensuales por usuario
+        function generateAttendanceMonthlyReport() {
+            const monthInput = document.getElementById('attendanceMonth').value;
+            if (!monthInput) {
+                alert('Por favor, seleccione un mes.');
+                return;
             }
 
-            // Actualizar gráficos
+            // Obtener el primer y último día del mes
+            const [year, month] = monthInput.split('-');
+            const startDate = new Date(year, month - 1, 1);
+            const endDate = new Date(year, month, 0); // Último día del mes
+
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const endDateStr = endDate.toISOString().split('T')[0];
+
+            // Obtener usuarios activos (excepto entrenadores)
+            const activeUsers = users.filter(user => 
+                user.status === 'active' && user.affiliationType !== 'Entrenador(a)'
+            );
+
+            // Calcular asistencias por usuario
+            const attendanceByUser = activeUsers.map(user => {
+                const userAttendance = attendance.filter(a => 
+                    a.userId === user.id && 
+                    a.status === 'presente' &&
+                    a.date >= startDateStr && 
+                    a.date <= endDateStr
+                ).length;
+
+                // Encontrar la última fecha de asistencia
+                const lastAttendance = attendance
+                    .filter(a => a.userId === user.id && a.status === 'presente')
+                    .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+
+                const lastAttendanceDate = lastAttendance ? formatDate(lastAttendance.date) : 'Nunca';
+
+                // Calcular días hábiles estimados en el mes (excluyendo domingos)
+                let businessDays = 0;
+                let currentDate = new Date(startDate);
+                while (currentDate <= endDate) {
+                    // 0 = Domingo, 6 = Sábado
+                    if (currentDate.getDay() !== 0) { // Excluir domingos
+                        businessDays++;
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+
+                // Calcular porcentaje de asistencia
+                const attendancePercentage = businessDays > 0 ? Math.round((userAttendance / businessDays) * 100) : 0;
+
+                return {
+                    user: user,
+                    attendanceCount: userAttendance,
+                    lastAttendance: lastAttendanceDate,
+                    attendancePercentage: attendancePercentage,
+                    businessDays: businessDays
+                };
+            });
+
+            // Ordenar por cantidad de asistencias (de mayor a menor)
+            attendanceByUser.sort((a, b) => b.attendanceCount - a.attendanceCount);
+
+            // Mostrar resultados en la tabla
+            const attendanceMonthlyList = document.getElementById('attendanceMonthlyList');
+            attendanceMonthlyList.innerHTML = '';
+
+            if (attendanceByUser.length === 0) {
+                attendanceMonthlyList.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            No hay usuarios activos para mostrar
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            attendanceByUser.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${item.user.name}</td>
+                    <td>${item.user.classTime || 'No definida'}</td>
+                    <td><strong>${item.attendanceCount}</strong> días</td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar ${item.attendancePercentage >= 80 ? 'bg-success' : item.attendancePercentage >= 50 ? 'bg-warning' : 'bg-danger'}" 
+                                 role="progressbar" 
+                                 style="width: ${item.attendancePercentage}%;"
+                                 aria-valuenow="${item.attendancePercentage}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                ${item.attendancePercentage}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>${item.lastAttendance}</td>
+                `;
+                attendanceMonthlyList.appendChild(row);
+            });
+
+            // Actualizar estadísticas en los cards superiores
+            const totalAttendance = attendanceByUser.reduce((sum, item) => sum + item.attendanceCount, 0);
+            const averageAttendance = attendanceByUser.length > 0 ? Math.round(totalAttendance / attendanceByUser.length) : 0;
+            
+            document.getElementById('reportTotalUsers').textContent = activeUsers.length;
+            document.getElementById('reportAttendanceRate').textContent = `${averageAttendance} días promedio`;
+            
+            // Actualizar gráfico de asistencia
             updateCharts();
+            
+            // Mostrar mensaje de éxito
+            const monthName = startDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            showBackupNotification(`Informe de asistencias generado para ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`);
+        }
+
+        // NUEVA: Función para generar informe de pagos mensuales por tipo
+        function generateIncomeMonthlyReport() {
+            const monthInput = document.getElementById('incomeMonth').value;
+            if (!monthInput) {
+                alert('Por favor, seleccione un mes.');
+                return;
+            }
+
+            // Obtener el primer y último día del mes
+            const [year, month] = monthInput.split('-');
+            const startDate = new Date(year, month - 1, 1);
+            const endDate = new Date(year, month, 0);
+
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const endDateStr = endDate.toISOString().split('T')[0];
+
+            // Filtrar pagos del mes
+            const monthlyPayments = income.filter(payment => 
+                payment.paymentDate >= startDateStr && payment.paymentDate <= endDateStr
+            );
+
+            // Agrupar pagos por tipo
+            const paymentsByType = {};
+            let totalAmount = 0;
+            let totalCount = 0;
+
+            monthlyPayments.forEach(payment => {
+                const type = payment.paymentType || 'Sin tipo';
+                const amount = parseFloat(payment.amount) || 0;
+                
+                if (!paymentsByType[type]) {
+                    paymentsByType[type] = {
+                        count: 0,
+                        amount: 0
+                    };
+                }
+                
+                paymentsByType[type].count++;
+                paymentsByType[type].amount += amount;
+                
+                totalCount++;
+                totalAmount += amount;
+            });
+
+            // Convertir a array para ordenar
+            const paymentsArray = Object.keys(paymentsByType).map(type => ({
+                type: type,
+                count: paymentsByType[type].count,
+                amount: paymentsByType[type].amount,
+                percentage: totalAmount > 0 ? Math.round((paymentsByType[type].amount / totalAmount) * 100) : 0
+            }));
+
+            // Ordenar por monto (de mayor a menor)
+            paymentsArray.sort((a, b) => b.amount - a.amount);
+
+            // Mostrar resultados en la tabla
+            const incomeMonthlyList = document.getElementById('incomeMonthlyList');
+            incomeMonthlyList.innerHTML = '';
+
+            if (paymentsArray.length === 0) {
+                incomeMonthlyList.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            No hay pagos registrados en este mes
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('totalPaymentsCount').textContent = '0';
+                document.getElementById('totalPaymentsAmount').textContent = '$0.00';
+                return;
+            }
+
+            paymentsArray.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.type}</td>
+                    <td>${item.count}</td>
+                    <td>$${item.amount.toFixed(2)}</td>
+                    <td>${item.percentage}%</td>
+                `;
+                incomeMonthlyList.appendChild(row);
+            });
+
+            // Actualizar totales
+            document.getElementById('totalPaymentsCount').textContent = totalCount;
+            document.getElementById('totalPaymentsAmount').textContent = `$${totalAmount.toFixed(2)}`;
+
+            // Actualizar gráfico de pagos por tipo
+            updateIncomeMonthlyChart(paymentsArray, totalAmount);
+
+            // Actualizar estadísticas en los cards superiores
+            document.getElementById('reportTotalIncome').textContent = `$${totalAmount.toFixed(2)}`;
+            
+            // Mostrar mensaje de éxito
+            const monthName = startDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            showBackupNotification(`Informe de pagos generado para ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`);
+        }
+
+        // NUEVA: Función para actualizar gráfico de pagos mensuales
+        function updateIncomeMonthlyChart(paymentsData, totalAmount) {
+            // Destruir gráfico existente si lo hay
+            if (incomeMonthlyChart) {
+                incomeMonthlyChart.destroy();
+            }
+
+            const ctx = document.getElementById('incomeMonthlyChart').getContext('2d');
+            
+            // Preparar datos para el gráfico
+            const labels = paymentsData.map(item => item.type);
+            const data = paymentsData.map(item => item.amount);
+            const percentages = paymentsData.map(item => item.percentage);
+            
+            // Colores para el gráfico
+            const backgroundColors = [
+                '#27F9D4', '#FF729F', '#7C77B9', '#1D8A99', '#F0F66E',
+                '#5C80BC', '#F7934C', '#4C5B5C', '#FF9F1C', '#A4036F'
+            ];
+
+            incomeMonthlyChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors.slice(0, labels.length),
+                        borderColor: 'var(--color-dark)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#f8f9fa',
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const percentage = percentages[context.dataIndex];
+                                    return `${context.label}: $${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // NUEVA: Función para exportar informe de asistencias a Excel
+        function exportAttendanceReport() {
+            const monthInput = document.getElementById('attendanceMonth').value;
+            if (!monthInput) {
+                alert('Por favor, genere primero un informe de asistencias.');
+                return;
+            }
+
+            // Obtener datos de la tabla
+            const table = document.getElementById('attendanceMonthlyTable');
+            if (!table || table.rows.length <= 1) {
+                alert('No hay datos para exportar.');
+                return;
+            }
+
+            // Crear libro de trabajo
+            let workbook = XLSX.utils.book_new();
+
+            // Convertir tabla a hoja de trabajo
+            const worksheet = XLSX.utils.table_to_sheet(table);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Asistencias Mensuales');
+
+            // Agregar metadatos
+            const [year, month] = monthInput.split('-');
+            const monthName = new Date(year, month - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            
+            const metadata = [
+                ['Informe de Asistencias Mensuales - Antología Box23'],
+                [`Mes: ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`],
+                [`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`],
+                [''],
+                ['Total usuarios activos:', document.getElementById('reportTotalUsers').textContent],
+                ['Días promedio de asistencia:', document.getElementById('reportAttendanceRate').textContent],
+                ['']
+            ];
+
+            const metadataSheet = XLSX.utils.aoa_to_sheet(metadata);
+            XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Resumen');
+
+            // Generar archivo
+            const fileName = `asistencias_${monthInput}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+
+            alert(`Informe exportado como ${fileName}`);
+        }
+
+        // NUEVA: Función para exportar informe de pagos a Excel
+        function exportIncomeReport() {
+            const monthInput = document.getElementById('incomeMonth').value;
+            if (!monthInput) {
+                alert('Por favor, genere primero un informe de pagos.');
+                return;
+            }
+
+            // Obtener datos de la tabla
+            const table = document.getElementById('incomeMonthlyTable');
+            if (!table || table.rows.length <= 2) { // Incluye fila de encabezado y pie de página
+                alert('No hay datos para exportar.');
+                return;
+            }
+
+            // Crear libro de trabajo
+            let workbook = XLSX.utils.book_new();
+
+            // Convertir tabla a hoja de trabajo
+            const worksheet = XLSX.utils.table_to_sheet(table);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Pagos Mensuales');
+
+            // Agregar metadatos
+            const [year, month] = monthInput.split('-');
+            const monthName = new Date(year, month - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            
+            const metadata = [
+                ['Informe de Pagos Mensuales - Antología Box23'],
+                [`Mes: ${monthName.charAt(0).toUpperCase() + monthName.slice(1)}`],
+                [`Fecha de generación: ${new Date().toLocaleDateString('es-ES')}`],
+                [''],
+                ['Total pagos:', document.getElementById('totalPaymentsCount').textContent],
+                ['Monto total:', document.getElementById('totalPaymentsAmount').textContent],
+                ['']
+            ];
+
+            const metadataSheet = XLSX.utils.aoa_to_sheet(metadata);
+            XLSX.utils.book_append_sheet(workbook, metadataSheet, 'Resumen');
+
+            // Generar archivo
+            const fileName = `pagos_${monthInput}_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+
+            alert(`Informe exportado como ${fileName}`);
         }
 
         // Actualizar gráficos
@@ -4090,6 +4471,31 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             document.getElementById('infoAttendance').textContent = attendance.length;
             document.getElementById('infoIncome').textContent = income.length;
             document.getElementById('infoLastBackup').textContent = lastBackup;
+            
+            // Actualizar estadísticas de reportes
+            const activeUsers = users.filter(u => u.status === 'active').length;
+            document.getElementById('reportTotalUsers').textContent = activeUsers;
+
+            // Calcular ingresos del mes actual
+            const currentDate = new Date();
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString().split('T')[0];
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).toISOString().split('T')[0];
+
+            const monthlyIncome = income
+                .filter(i => i.paymentDate >= firstDay && i.paymentDate <= lastDay)
+                .reduce((sum, record) => sum + parseFloat(record.amount), 0);
+
+            document.getElementById('reportTotalIncome').textContent = `$${monthlyIncome.toFixed(2)}`;
+
+            // Calcular tasa de asistencia
+            const totalAttendance = attendance.filter(a => a.status === 'presente').length;
+            const possibleAttendance = activeUsers * 20; // Estimación de 20 días por mes
+            const attendanceRate = possibleAttendance > 0 ? Math.round((totalAttendance / possibleAttendance) * 100) : 0;
+            document.getElementById('reportAttendanceRate').textContent = `${attendanceRate}%`;
+
+            // Calcular paquetes completados
+            const packagesCompleted = users.filter(u => u.affiliationType === 'paquete 10 clases').length;
+            document.getElementById('reportPackagesCompleted').textContent = packagesCompleted;
         }
 
         // Preprocesar datos de importación
@@ -4271,7 +4677,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
 
             summaryHTML += `</div>`;
 
-            importSummaryContent.innerHTML = summaryHTML;
+            document.getElementById('importSummaryContent').innerHTML = summaryHTML;
 
             // Mostrar modal de resumen
             const importModal = new bootstrap.Modal(document.getElementById('importSummaryModal'));
@@ -4280,7 +4686,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
 
         // Confirmar importación de datos
         function confirmImport() {
-            const replaceData = replaceDataCheckbox.checked;
+            const replaceData = document.getElementById('replaceData').checked;
 
             if (replaceData) {
                 // Reemplazar todos los datos
@@ -4326,7 +4732,6 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             loadAttendance();
             loadIncome();
             updateSystemInfo();
-            loadReports();
 
             // Cerrar modal
             const importModal = bootstrap.Modal.getInstance(document.getElementById('importSummaryModal'));
@@ -4449,7 +4854,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             }
 
             // Actualizar título del modal
-            birthdayModalTitle.textContent = title;
+            document.getElementById('birthdayModalTitle').textContent = title;
 
             // Generar contenido
             let contentHTML = '';
@@ -4508,7 +4913,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                 contentHTML += '</div>';
             }
 
-            birthdayContent.innerHTML = contentHTML;
+            document.getElementById('birthdayContent').innerHTML = contentHTML;
 
             // Mostrar modal
             const birthdayModal = new bootstrap.Modal(document.getElementById('birthdayModal'));
@@ -4527,7 +4932,7 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             }
 
             // Rellenar el formulario de WhatsApp
-            whatsappNumber.value = cleanPhone(user.phone);
+            document.getElementById('whatsappNumber').value = cleanPhone(user.phone);
 
             // Crear mensaje de cumpleaños personalizado
             const message = `¡Feliz cumpleaños ${user.name}! 🎉🎂
@@ -4541,8 +4946,8 @@ Que este nuevo año de vida esté cargado de éxitos y momentos inolvidables.
 Con cariño,
 El equipo de Antología Box23`;
 
-            whatsappMessage.value = message;
-            messagePreview.textContent = message;
+            document.getElementById('whatsappMessage').value = message;
+            document.getElementById('messagePreview').textContent = message;
 
             // Actualizar enlace de WhatsApp
             updateWhatsAppLink();
@@ -4557,8 +4962,8 @@ El equipo de Antología Box23`;
             let message = `¡Feliz cumpleaños! 🎉🎂\n\nEn nombre de todo el equipo de Antología Box23, queremos desearte un día maravilloso lleno de alegría, salud y muchas bendiciones. Que este nuevo año de vida esté cargado de éxitos y momentos inolvidables.\n\n¡Disfruta tu día especial! 🥳`;
 
             // Rellenar el formulario de WhatsApp
-            whatsappMessage.value = message;
-            messagePreview.textContent = message;
+            document.getElementById('whatsappMessage').value = message;
+            document.getElementById('messagePreview').textContent = message;
 
             // Mostrar modal de WhatsApp
             const whatsappModal = new bootstrap.Modal(document.getElementById('whatsappModal'));
@@ -4574,6 +4979,12 @@ El equipo de Antología Box23`;
             setTimeout(() => {
                 checkUpcomingBirthdays();
             }, 1000);
+            
+            // Generar reportes iniciales automáticamente
+            setTimeout(() => {
+                generateAttendanceMonthlyReport();
+                generateIncomeMonthlyReport();
+            }, 2000);
         });
         
         // Manejo de rutas para SPA en GitHub Pages
@@ -4586,9 +4997,4 @@ El equipo de Antología Box23`;
         })();
     </script>
 </body>
-
-</html>
-
-
-
-
+</html
