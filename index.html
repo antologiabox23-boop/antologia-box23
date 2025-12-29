@@ -1692,9 +1692,10 @@
                                                         <th>Usuario</th>
                                                         <th>Teléfono</th>
                                                         <th>Asistencias</th>
-                                                        <th>Vigencia Pago</th>
+                                                        <th>Clases después de vencimiento</th>
+                                                        <th>Final Vigencia</th>
                                                         <th>Tipo Pago</th>
-                                                        <th>Valor Último Pago</th> <!-- Nueva columna -->
+                                                        <th>Valor Último Pago</th>
                                                         <th>Estado</th>
                                                     </tr>
                                                 </thead>
@@ -3548,8 +3549,12 @@
             const userPayments = income.filter(payment => payment.userId == userId);
             if (userPayments.length === 0) return null;
 
-            // Ordenar por endDate descendente
-            userPayments.sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
+            userPayments.sort((a, b) => {
+                // Convertir a fechas para comparación
+                const dateA = new Date(a.endDate);
+                const dateB = new Date(b.endDate);
+                return dateB - dateA; // Orden descendente
+            });
             return userPayments[0];
         }
 
@@ -3564,11 +3569,13 @@
                 paymentType: null, 
                 endDate: null, 
                 startDate: null,
-                classesAfterExpiration: 0 // NUEVO: clases después del vencimiento
+                classesAfterExpiration: 0,
+                lastPayment: null
             };
             
-            const userIncome = income.filter(i => i.userId === userId);
-            if (userIncome.length === 0) {
+            // Obtener el último pago (ordenado por fecha de vencimiento)
+            const lastPayment = getLastPayment(userId);
+            if (!lastPayment) {
                 return { 
                     expired: true, 
                     daysExpired: 'N/A', 
@@ -3577,42 +3584,45 @@
                     paymentType: null, 
                     endDate: null, 
                     startDate: null,
-                    classesAfterExpiration: 0
+                    classesAfterExpiration: 0,
+                    lastPayment: null
                 };
             }
 
-            // Obtener el último pago
-            const lastPayment = userIncome.sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
             const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Asegurarnos de que las fechas estén correctamente parseadas
             const endDate = new Date(lastPayment.endDate);
+            endDate.setHours(0, 0, 0, 0);
+            
             const startDate = new Date(lastPayment.startDate);
+            startDate.setHours(0, 0, 0, 0);
             
-            // Contar clases asistidas desde la fecha de inicio hasta hoy
+            // Contar TODAS las clases asistidas desde la fecha de inicio del último pago
             let classesAttended = 0;
-            let classesAfterExpiration = 0; // NUEVO: contador para clases después del vencimiento
+            let classesAfterExpiration = 0;
             
-            if (startDate && endDate) {
-                // Todas las clases desde la fecha de inicio
-                const userAttendance = attendance.filter(a => 
-                    a.userId === userId && 
-                    a.status === 'presente'
-                );
+            const userAttendance = attendance.filter(a => 
+                a.userId === userId && 
+                a.status === 'presente'
+            );
+            
+            userAttendance.forEach(att => {
+                const attDate = new Date(att.date);
+                attDate.setHours(0, 0, 0, 0);
                 
-                userAttendance.forEach(att => {
-                    const attDate = new Date(att.date);
+                // Si la asistencia es después de la fecha de inicio del período
+                if (attDate >= startDate) {
+                    classesAttended++;
                     
-                    // Si la asistencia es después de la fecha de inicio del período
-                    if (attDate >= startDate) {
-                        classesAttended++;
-                        
-                        // NUEVO: Si la asistencia es después de la fecha de vencimiento
-                        if (attDate > endDate) {
-                            classesAfterExpiration++;
-                        }
+                    // Si la asistencia es después de la fecha de vencimiento
+                    if (attDate > endDate) {
+                        classesAfterExpiration++;
                     }
-                });
-            }
-            
+                }
+            });
+                   
             // Determinar total de clases según el tipo de pago
             let totalClasses = null;
             const paymentType = lastPayment.paymentType || user.affiliationType;
@@ -3647,7 +3657,8 @@
                     paymentType: paymentType,
                     endDate: lastPayment.endDate,
                     startDate: lastPayment.startDate,
-                    classesAfterExpiration: classesAfterExpiration // NUEVO
+                    classesAfterExpiration: classesAfterExpiration,
+                    lastPayment: lastPayment
                 };
             }
 
@@ -3659,7 +3670,8 @@
                 paymentType: paymentType,
                 endDate: lastPayment.endDate,
                 startDate: lastPayment.startDate,
-                classesAfterExpiration: classesAfterExpiration // NUEVO
+                classesAfterExpiration: classesAfterExpiration,
+                lastPayment: lastPayment
             };
         }
 
@@ -3671,7 +3683,7 @@
 
             let totalUsers = 0;
             let presentUsers = 0;
-
+            
             // Obtener usuarios activos (excepto entrenadores) y ordenarlos alfabéticamente
             const activeUsers = users
                 .filter(user => user.status === 'active' && user.affiliationType !== 'Entrenador(a)')
@@ -3693,7 +3705,25 @@
                 
                 // Obtener el último pago del usuario
                 const lastPayment = getLastPayment(user.id);
-
+                if (!lastPayment) {
+                    return { 
+                        expired: true, 
+                        daysExpired: 'N/A', 
+                        classesAttended: 0, 
+                        totalClasses: null, 
+                        paymentType: null, 
+                        endDate: null, 
+                        startDate: null,
+                        classesAfterExpiration: 0,
+                        lastPayment: null
+                    };
+                }
+                
+                const today = new Date();
+                const endDate = new Date(lastPayment.endDate);
+                const startDate = new Date(lastPayment.startDate);
+                
+                
                 // MEJORA 2: Crear texto de información de membresía mejorado
                 let membershipInfo = '';
                 if (lastPayment) {
@@ -3803,7 +3833,7 @@
                 const userAttendance = attendance
                     .filter(a => a.userId === user.id && a.status === 'presente')
                     .sort((a, b) => new Date(b.date) - new Date(a.date));
-
+                
                 // Obtener las últimas 5 fechas de asistencia registradas (no necesariamente consecutivas)
                 const lastAttendanceDates = userAttendance.slice(0, 5).map(a => a.date);
 
@@ -4140,48 +4170,61 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
                     a.date <= endDate
                 ).length;
 
+                const membershipStatus = checkMembershipStatus(user.id);
+
                 // Obtener último pago del usuario
-                const userPayments = income.filter(p => p.userId === user.id);
-                let lastPayment = null;
+
+                const lastPayment = membershipStatus.lastPayment;
+                
                 let paymentValidity = 'Sin pago';
                 let paymentType = '-';
-                let lastPaymentDate = 'Nunca';
-
-                if (userPayments.length > 0) {
-                    // Ordenar por fecha de pago descendente
-                    userPayments.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
-                    lastPayment = userPayments[0];
-                    lastPaymentDate = formatDate(lastPayment.paymentDate);
+                let paymentAmount = '-';
+                let classesAfterExpiration = membershipStatus.classesAfterExpiration || 0;
+                
+                if (lastPayment) {
                     paymentType = lastPayment.paymentType || user.affiliationType || '-';
                     paymentAmount = lastPayment.amount ? `$${parseFloat(lastPayment.amount).toFixed(2)}` : '-';
-
-                    // Formatear vigencia del pago
-                    if (lastPayment.startDate && lastPayment.endDate) {
-                        const addOneDay = (date) => {
-                            const d = new Date(date);
-                            d.setDate(d.getDate() + 1);
+                    
+                    // Formatear vigencia del pago (solo mostrar fecha final)
+                    if (lastPayment.endDate) {
+                        const addOneDay = (dateStr) => {
+                            const d = new Date(dateStr);
+                            d.setDate(d.getDate() + 1); // Sumar un día para compensar zona horaria
                             return d;
                         };
-                        paymentValidity = `${formatDate(addOneDay(lastPayment.startDate))} - ${formatDate(addOneDay(lastPayment.endDate))}`;
+                        
+                        // SOLO MOSTRAR FECHA FINAL como en el modal
+                        paymentValidity = `Vence: ${formatDate(addOneDay(lastPayment.endDate))}`;
                     }
                 }
-
+                    
+                // Mostrar información de estado
+                let statusBadge = '<span class="badge bg-success">Activo</span>';
+                if (membershipStatus.expired) {
+                    statusBadge = `<span class="badge bg-warning">Vencido ${membershipStatus.daysExpired} días</span>`;
+                }
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${user.name}</td>
                     <td>${user.phone || '-'}</td>
                     <td>${userAttendance}</td>
+                    <td>
+                        ${classesAfterExpiration > 0 ? 
+                            `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> ${classesAfterExpiration}</span>` : 
+                            '0'}
+                    </td>
                     <td>${paymentValidity}</td>
                     <td>${paymentType}</td>
-                    <td>${paymentAmount}</td> <!-- Nueva celda -->
-                    <td><span class="badge bg-success">Activo</span></td>
+                    <td>${paymentAmount}</td>
+                    <td>${statusBadge}</td>
                 `;
                 combinedReportList.appendChild(row);
             });
-
+            
             showBackupNotification('Reporte combinado generado correctamente');
         }
-
+        
         // NUEVA: Función para exportar reporte combinado a Excel
         function exportCombinedReport() {
             const table = document.getElementById('combinedReportTable');
@@ -5215,4 +5258,3 @@ El equipo de Antología Box23`;
     </script>
 </body>
 </html>
-
