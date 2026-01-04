@@ -2243,6 +2243,7 @@
                                         <label for="paymentType" class="form-label">Tipo de pago *</label>
                                         <select class="form-select" id="paymentType" required>
                                             <option value="">Seleccionar tipo</option>
+                                            <option value="movimientos caja">Movimientos Caja</option>
                                             <option value="clase suelta">Clase suelta</option>
                                             <option value="paquete 10 clases">Paquete 10 clases</option>
                                             <option value="mensualidad">Mensualidad</option>
@@ -2352,78 +2353,15 @@
                 </div>
             </div>
 
-            <!-- Sección de Reportes - MEJORADA -->
+            <!-- Sección de Reportes - SIMPLIFICADA (sin gráficos) -->
             <div class="tab-pane fade" id="reports" role="tabpanel">
                 <div class="row">
                     <div class="col-md-12">
                         <div class="card">
                             <div class="card-header">
-                                <h5 class="card-title mb-0"><i class="fas fa-chart-pie"></i> Reportes y Estadísticas
-                                </h5>
+                                <h5 class="card-title mb-0"><i class="fas fa-chart-pie"></i> Reportes</h5>
                             </div>
                             <div class="card-body">
-                                <div class="row mb-4">
-                                    <div class="col-md-3">
-                                        <div class="card summary-card">
-                                            <div class="card-body text-center">
-                                                <h5 class="card-title" id="reportTotalUsers">0</h5>
-                                                <p class="card-text">Usuarios activos</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card summary-card">
-                                            <div class="card-body text-center">
-                                                <h5 class="card-title" id="reportTotalIncome">$0</h5>
-                                                <p class="card-text">Ingresos mensuales</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card summary-card">
-                                            <div class="card-body text-center">
-                                                <h5 class="card-title" id="reportAttendanceRate">0%</h5>
-                                                <p class="card-text">Tasa de asistencia</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <div class="card summary-card">
-                                            <div class="card-body text-center">
-                                                <h5 class="card-title" id="reportPackagesCompleted">0</h5>
-                                                <p class="card-text">Paquetes completados</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-4">
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h6 class="card-title mb-0">Distribución por tipo de afiliación</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="chart-container">
-                                                    <canvas id="affiliationChart"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card">
-                                            <div class="card-header">
-                                                <h6 class="card-title mb-0">Asistencia por clase</h6>
-                                            </div>
-                                            <div class="card-body">
-                                                <div class="chart-container">
-                                                    <canvas id="attendanceChart"></canvas>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
                                 <!-- NUEVO: Reporte Combinado de Asistencias y Pagos -->
                                 <div class="combined-report-card mb-4">
                                     <div class="combined-report-header">
@@ -2469,7 +2407,7 @@
                                                 </thead>
                                                 <tbody id="combinedReportList">
                                                     <tr>
-                                                        <td colspan="9" class="text-center text-muted">
+                                                        <td colspan="8" class="text-center text-muted">
                                                             Seleccione filtros y haga clic en "Generar Reporte"
                                                         </td>
                                                     </tr>
@@ -2557,12 +2495,7 @@
                                             </div>
                                         </div>
                                         <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="chart-container">
-                                                    <canvas id="incomeMonthlyChart"></canvas>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
+                                            <div class="col-md-12">
                                                 <div class="table-responsive table-container">
                                                     <table class="table table-striped table-hover" id="incomeMonthlyTable">
                                                         <thead>
@@ -2792,10 +2725,74 @@
         const classTimes = ["5:00 am", "6:00 am", "7:00 am", "8:00 am", "4:00 pm", "5:30 pm", "6:30 pm", "7:30 pm"];
 
         // Variables para gráficos
-        let affiliationChart = null;
-        let attendanceChart = null;
+        //let affiliationChart = null; 3/1/2026
+        //let attendanceChart = null;   3/1/2026
         let incomeMonthlyChart = null;
         let financialChart = null; // NUEVO: Gráfico para reportes financieros
+
+        // =============================================
+        // FUNCIONES PARA MANEJO CORRECTO DE FECHAS (LOCAL)
+        // =============================================
+
+        // Función para crear fecha local correctamente
+        function createLocalDate(dateString = null) {
+            if (!dateString) {
+                const now = new Date();
+                // Crear fecha local sin problemas de UTC
+                return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            }
+            
+            // Si ya es una fecha, devolverla
+            if (dateString instanceof Date) {
+                return dateString;
+            }
+            
+            // Si es string en formato YYYY-MM-DD
+            if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+                const parts = dateString.split('-');
+                return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+            
+            // Para otros formatos, usar Date normal
+            return new Date(dateString);
+        }
+
+        // Función para formatear fecha en formato local (DD/MM/YYYY)
+        function formatLocalDate(dateInput) {
+            if (!dateInput) return '';
+            
+            const date = createLocalDate(dateInput);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            
+            return `${day}/${month}/${year}`;
+        }
+
+        // Función para convertir a string YYYY-MM-DD (para inputs date)
+        function toDateInputValue(dateInput) {
+            if (!dateInput) return '';
+            
+            const date = createLocalDate(dateInput);
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            
+            return `${year}-${month}-${day}`;
+        }
+
+        // Función para calcular diferencia en días entre dos fechas (local)
+        function daysBetween(startDate, endDate) {
+            const start = createLocalDate(startDate);
+            const end = createLocalDate(endDate);
+            
+            // Ajustar ambas fechas a medianoche local
+            start.setHours(0, 0, 0, 0);
+            end.setHours(0, 0, 0, 0);
+            
+            const diffTime = Math.abs(end - start);
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
 
         // NUEVO: Valor por hora para entrenadores
         const HOURLY_RATE = 10000;
@@ -2810,33 +2807,33 @@
             // Configurar validación de teléfonos
             setupPhoneValidation();
 
-            // Establecer fecha actual por defecto
-            const today = new Date().toISOString().split('T')[0];
+            // Establecer fecha actual por defecto (USAR FECHA LOCAL)
+            const today = toDateInputValue(new Date());
             document.getElementById('attendanceDate').value = today;
-            document.getElementById('expenseDate').value = today; // NUEVO: Fecha para gastos
-            document.getElementById('classRecordDate').value = today; // NUEVO: Fecha para registro de clases
+            document.getElementById('expenseDate').value = today;
+            document.getElementById('classRecordDate').value = today;
 
-            // Establecer fechas inicial y final para pagos (hoy y 30 días después)
+            // Establecer fechas inicial y final para pagos (hoy y 30 días después) - CORREGIDO
             document.getElementById('startDate').value = today;
             const endDate = new Date();
             endDate.setDate(endDate.getDate() + 30);
-            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = toDateInputValue(endDate);
 
-            // Configurar fecha inicial para filtros (inicio del mes)
+            // Configurar fecha inicial para filtros (inicio del mes) - CORREGIDO
             const firstDayOfMonth = new Date();
             firstDayOfMonth.setDate(1);
-            const firstDayStr = firstDayOfMonth.toISOString().split('T')[0];
+            const firstDayStr = toDateInputValue(firstDayOfMonth);
 
             document.getElementById('attendanceStartDateFilter').value = firstDayStr;
             document.getElementById('attendanceEndDateFilter').value = today;
             document.getElementById('incomeStartDateFilter').value = firstDayStr;
             document.getElementById('incomeEndDateFilter').value = today;
-            document.getElementById('expenseStartDateFilter').value = firstDayStr; // NUEVO: Filtro para gastos
-            document.getElementById('expenseEndDateFilter').value = today; // NUEVO: Filtro para gastos
-            document.getElementById('paymentStartDate').value = firstDayStr; // NUEVO: Filtro para pagos a entrenadores
-            document.getElementById('paymentEndDate').value = today; // NUEVO: Filtro para pagos a entrenadores
-            document.getElementById('historyStartDate').value = firstDayStr; // NUEVO: Filtro para historial
-            document.getElementById('historyEndDate').value = today; // NUEVO: Filtro para historial
+            document.getElementById('expenseStartDateFilter').value = firstDayStr;
+            document.getElementById('expenseEndDateFilter').value = today;
+            document.getElementById('paymentStartDate').value = firstDayStr;
+            document.getElementById('paymentEndDate').value = today;
+            document.getElementById('historyStartDate').value = firstDayStr;
+            document.getElementById('historyEndDate').value = today;
 
             // Establecer fechas por defecto para reportes combinados
             document.getElementById('combinedReportStartDate').value = firstDayStr;
@@ -2846,7 +2843,7 @@
             const currentMonth = new Date().toISOString().slice(0, 7);
             document.getElementById('attendanceMonth').value = currentMonth;
             document.getElementById('incomeMonth').value = currentMonth;
-            document.getElementById('financialReportMonth').value = currentMonth; // NUEVO: Reporte financiero
+            document.getElementById('financialReportMonth').value = currentMonth;
 
             // Cargar datos
             loadUsers();
@@ -2875,9 +2872,9 @@
 
             document.getElementById('reports-tab').addEventListener('click', function () {
                 // Actualizar gráficos al cambiar a reportes
-                setTimeout(() => {
-                    updateCharts();
-                }, 100);
+                //setTimeout(() => { 3/1/2026
+                //    updateCharts(); 3/1/2026
+                //}, 100); 3/1/2026
             });
 
             // Evento para cambio de fecha inicial en pagos
@@ -3863,27 +3860,18 @@
         }
 
         // MODIFICACIÓN 1: Función para formatear fecha correctamente para WhatsApp
-        function formatDateForWhatsApp(dateString) {
-            if (!dateString) return '';
-            
-            // Crear fecha y asegurar que no se reste un día por zona horaria
-            const date = new Date(dateString);
-            // Agregar un día para compensar el desfase de zona horaria
-            date.setDate(date.getDate() + 1);
-            
-            const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
-            return date.toLocaleDateString('es-ES', options);
-        }
-
-        // Función mejorada para convertir fechas al formato correcto
         function convertToISODate(dateValue) {
             if (!dateValue) return null;
 
-            // Si es un número (serial de Excel), convertirlo a fecha
+            // Si es un número (serial de Excel), convertirlo a fecha local
             if (typeof dateValue === 'number') {
-                const excelEpoch = new Date(1899, 11, 30);
+                const excelEpoch = new Date(1899, 11, 30); // 30 de diciembre 1899
                 const date = new Date(excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000);
-                return date.toISOString().split('T')[0];
+                // Obtener componentes locales
+                const year = date.getFullYear();
+                const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                const day = date.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
             }
 
             // Si ya es una fecha en formato ISO (YYYY-MM-DD)
@@ -3900,12 +3888,14 @@
                 return `${year}-${month}-${day}`;
             }
 
-            // Si es un objeto Date
+            // Si es un objeto Date, convertir a string YYYY-MM-DD
             if (dateValue instanceof Date) {
-                return dateValue.toISOString().split('T')[0];
+                const year = dateValue.getFullYear();
+                const month = (dateValue.getMonth() + 1).toString().padStart(2, '0');
+                const day = dateValue.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
             }
 
-            // Si no se puede parsear, devolver null
             return null;
         }
 
@@ -4573,14 +4563,14 @@
                 };
             }
 
-            const today = new Date();
+            const today = createLocalDate();
             today.setHours(0, 0, 0, 0);
             
             // Asegurarnos de que las fechas estén correctamente parseadas
-            const endDate = new Date(lastPayment.endDate);
+            const endDate = createLocalDate(lastPayment.endDate);
             endDate.setHours(0, 0, 0, 0);
             
-            const startDate = new Date(lastPayment.startDate);
+            const startDate = createLocalDate(lastPayment.startDate);
             startDate.setHours(0, 0, 0, 0);
             
             // Contar TODAS las clases asistidas desde la fecha de inicio del último pago
@@ -4593,7 +4583,7 @@
             );
             
             userAttendance.forEach(att => {
-                const attDate = new Date(att.date);
+                const attDate = createLocalDate(att.date);
                 attDate.setHours(0, 0, 0, 0);
                 
                 // Si la asistencia es después de la fecha de inicio del período
@@ -4630,9 +4620,8 @@
             }
 
             if (today > endDate) {
-                // Calcular días de vencimiento
-                const diffTime = Math.abs(today - endDate);
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                // Calcular días de vencimiento usando función local
+                const diffDays = daysBetween(endDate, today);
                 return { 
                     expired: true, 
                     daysExpired: diffDays, 
