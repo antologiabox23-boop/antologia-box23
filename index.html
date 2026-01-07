@@ -2855,6 +2855,27 @@
             loadStaffClasses(); // NUEVO: Cargar clases de personal
             updateSystemInfo();
 
+            // NUEVO: Verificar cumpleaños al iniciar
+            setTimeout(() => {
+                checkUpcomingBirthdays();
+            }, 2000);
+
+            // NUEVO: Configurar evento para el botón de WhatsApp en el modal
+            const whatsappLinkBtn = document.getElementById('whatsappLink');
+            if (whatsappLinkBtn) {
+                whatsappLinkBtn.addEventListener('click', function(e) {
+                    const href = this.getAttribute('href');
+                    if (!href || href === '#') {
+                        e.preventDefault();
+                        alert('Por favor, complete un número de teléfono válido y un mensaje.');
+                    }
+                });
+            }
+            
+            // NUEVO: Actualizar enlace de WhatsApp cuando cambien los campos
+            document.getElementById('whatsappNumber')?.addEventListener('input', updateWhatsAppLink);
+            document.getElementById('whatsappMessage')?.addEventListener('input', updateWhatsAppLink);
+
             // Configurar respaldo automático si estaba activado
             if (localStorage.getItem('autoBackupEnabled') === 'true') {
                 document.getElementById('autoBackupCheckbox').checked = true;
@@ -3695,16 +3716,41 @@
             // Evento para mostrar cumpleaños del mes
             const showBirthdaysBtn = document.getElementById('showBirthdaysThisMonth');
             if (showBirthdaysBtn) {
-                showBirthdaysBtn.addEventListener('click', function () {
+                showBirthdaysBtn.addEventListener('click', function() {
                     showBirthdays('month');
                 });
             }
 
-            // Evento para enviar felicitaciones de cumpleaños
+            // Asegurar que el botón de enviar felicitaciones funcione
             const sendBirthdayWishesBtn = document.getElementById('sendBirthdayWishes');
             if (sendBirthdayWishesBtn) {
-                sendBirthdayWishesBtn.addEventListener('click', function () {
-                    sendBirthdayWishes();
+                sendBirthdayWishesBtn.addEventListener('click', function() {
+                    // Enviar mensaje a todos los usuarios en el modal
+                    const birthdayItems = document.querySelectorAll('.birthday-item');
+                    let count = 0;
+                    
+                    birthdayItems.forEach(item => {
+                        const button = item.querySelector('.btn-success');
+                        if (button && button.onclick) {
+                            // Obtener el userId del onclick
+                            const onclickText = button.getAttribute('onclick');
+                            const match = onclickText.match(/sendBirthdayMessage\('([^']+)'\)/);
+                            if (match) {
+                                const userId = match[1];
+                                // Simular clic en el botón individual
+                                setTimeout(() => {
+                                    sendBirthdayMessage(userId);
+                                }, count * 1000); // Espaciar los mensajes
+                                count++;
+                            }
+                        }
+                    });
+                    
+                    if (count === 0) {
+                        alert('No hay usuarios con teléfono válido para enviar felicitaciones.');
+                    } else {
+                        alert(`Se abrirán ${count} ventanas de WhatsApp para enviar felicitaciones. Por favor, complete y envíe cada mensaje.`);
+                    }
                 });
             }
 
@@ -4009,15 +4055,43 @@
 
         // Actualizar enlace de WhatsApp
         function updateWhatsAppLink() {
-            const phone = cleanPhone(document.getElementById('whatsappNumber').value);
-            const message = document.getElementById('whatsappMessage').value;
-
-            if (phone && message) {
+            const phoneInput = document.getElementById('whatsappNumber');
+            const messageInput = document.getElementById('whatsappMessage');
+            const whatsappLink = document.getElementById('whatsappLink');
+            
+            if (!phoneInput || !messageInput || !whatsappLink) return;
+            
+            const phone = cleanPhone(phoneInput.value);
+            const message = messageInput.value;
+            
+            if (phone && message && isValidPhone(phone)) {
                 const encodedMessage = encodeURIComponent(message);
-                document.getElementById('whatsappLink').href = `https://wa.me/57${phone}?text=${encodedMessage}`;
+                const whatsappUrl = `https://wa.me/57${phone}?text=${encodedMessage}`;
+                whatsappLink.href = whatsappUrl;
+                whatsappLink.style.pointerEvents = 'auto';
+                whatsappLink.style.opacity = '1';
+            } else {
+                whatsappLink.href = '#';
+                whatsappLink.style.pointerEvents = 'none';
+                whatsappLink.style.opacity = '0.5';
             }
         }
 
+        // Añadir esta función para formatear correctamente las fechas
+        function formatDateForWhatsApp(dateString) {
+            if (!dateString) return '';
+            
+            const date = new Date(dateString);
+            
+            // Asegurar que no hay problemas de zona horaria
+            const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+            
+            const day = localDate.getDate();
+            const month = localDate.getMonth() + 1;
+            const year = localDate.getFullYear();
+            
+            return `${day}/${month}/${year}`;
+        }
         // Filtrar usuarios en la tabla
         function filterUsers() {
             const searchText = document.getElementById('searchUserInput').value.toLowerCase();
@@ -6381,16 +6455,88 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
         }
 
         // Función para verificar cumpleaños próximos
-        function checkUpcomingBirthdays() {
-            const usersWithBirthdays = users.filter(user => {
-                const birthdayInfo = getUpcomingBirthdayInfo(user.birthdate);
-                return birthdayInfo !== null && birthdayInfo.daysUntil <= 7; // Solo próximos 7 días
-            });
-
-            if (usersWithBirthdays.length > 0) {
-                console.log(`Hay ${usersWithBirthdays.length} usuarios con cumpleaños próximos`);
-                // Podrías mostrar una notificación aquí si lo deseas
+        // Reemplazar la función checkUpcomingBirthdays con esta versión mejorada
+function checkUpcomingBirthdays() {
+    const today = new Date();
+    const upcomingBirthdays = [];
+    
+    users.forEach(user => {
+        if (user.birthdate && user.status === 'active') {
+            const birthDate = new Date(user.birthdate);
+            const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+            
+            // Si el cumpleaños ya pasó este año, calcular para el próximo año
+            if (nextBirthday < today) {
+                nextBirthday.setFullYear(today.getFullYear() + 1);
             }
+            
+            // Calcular días hasta el cumpleaños
+            const diffTime = nextBirthday - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Mostrar solo si es dentro de los próximos 7 días
+            if (diffDays <= 7 && diffDays > 0) {
+                upcomingBirthdays.push({
+                    user: user,
+                    daysUntil: diffDays,
+                    nextBirthday: nextBirthday
+                });
+            }
+        }
+    });
+    
+    // Ordenar por proximidad
+    upcomingBirthdays.sort((a, b) => a.daysUntil - b.daysUntil);
+    
+    // Mostrar notificación si hay cumpleaños próximos
+    if (upcomingBirthdays.length > 0) {
+        showBirthdayNotification(upcomingBirthdays);
+    }
+    
+    return upcomingBirthdays;
+}
+
+        // Nueva función para mostrar notificación de cumpleaños
+        function showBirthdayNotification(birthdays) {
+            // Crear o actualizar notificación
+            let notification = document.getElementById('birthdayNotification');
+            
+            if (!notification) {
+                notification = document.createElement('div');
+                notification.id = 'birthdayNotification';
+                notification.className = 'alert alert-warning alert-dismissible fade show';
+                notification.style.position = 'fixed';
+                notification.style.top = '20px';
+                notification.style.right = '20px';
+                notification.style.zIndex = '2000';
+                notification.style.maxWidth = '400px';
+                
+                document.body.appendChild(notification);
+            }
+            
+            let message = `<strong><i class="fas fa-birthday-cake"></i> Cumpleaños próximos:</strong><br>`;
+            birthdays.forEach(bday => {
+                const daysText = bday.daysUntil === 1 ? 'mañana' : `en ${bday.daysUntil} días`;
+                message += `• ${bday.user.name} cumple ${daysText}<br>`;
+            });
+            
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn btn-sm btn-success mt-2" onclick="showBirthdays('week')">
+                    <i class="fas fa-gift"></i> Ver todos
+                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Mostrar notificación
+            notification.classList.add('show');
+            
+            // Auto-ocultar después de 30 segundos
+            setTimeout(() => {
+                if (notification) {
+                    notification.classList.remove('show');
+                }
+            }, 30000);
         }
 
         // Función para mostrar cumpleaños
@@ -6458,6 +6604,11 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             const user = users.find(u => u.id === userId);
             if (!user) return;
 
+            // Validar teléfono
+            if (!isValidPhone(user.phone)) {
+                alert('No se puede enviar el mensaje porque el usuario no tiene un número de teléfono válido.');
+                return;
+            }
             // Rellenar el formulario de WhatsApp
             document.getElementById('whatsappNumber').value = cleanPhone(user.phone);
 
