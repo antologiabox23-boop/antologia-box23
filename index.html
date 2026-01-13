@@ -567,7 +567,7 @@
             color: white;
             padding: 5px 10px;
             border-radius: 15px;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             margin-left: 10px;
         }
 
@@ -587,6 +587,17 @@
             flex: 1;
         }
 
+        /* Agrega esto al final del bloque de estilos */
+        .birthday-notification {
+            background: linear-gradient(135deg, #FFB347, #FF729F) !important;
+            color: var(--color-dark) !important;
+            border-left: 4px solid #FFB347;
+        }
+
+        .birthday-modal .modal-header {
+            background: linear-gradient(135deg, #FFB347, #FF729F) !important;
+            color: var(--color-dark) !important;
+        }
         .birthday-user-name {
             font-weight: 500;
             margin-bottom: 5px;
@@ -2909,6 +2920,10 @@
                 }
             });
             
+            // En la función initializeApp, agrega esto después de cargar los usuarios:
+            document.getElementById('showBirthdaysThisMonth').addEventListener('click', function() {
+                showBirthdays('month');
+            });
             // =============================================
             // EVENT LISTENERS PARA NUEVAS FUNCIONALIDADES
             // =============================================
@@ -6426,75 +6441,85 @@ Hemos notado que no hemos tenido el gusto de verte desde el ${lastAttendanceDate
             alert('Datos importados correctamente!');
         }
 
-        // Función para obtener información de cumpleaños próximos
+        // Función para obtener información de cumpleaños próximos - CORREGIDA PARA ZONA HORARIA
         function getUpcomingBirthdayInfo(birthdate) {
             if (!birthdate) return null;
 
-            const today = new Date();
-            const birthDate = new Date(birthdate);
-            const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-
-            // Si el cumpleaños ya pasó este año, calcular para el próximo año
-            if (nextBirthday < today) {
-                nextBirthday.setFullYear(today.getFullYear() + 1);
+            try {
+                // Parsear la fecha de nacimiento IGNORANDO la zona horaria
+                // Dividir el string YYYY-MM-DD directamente
+                const parts = birthdate.split('-');
+                if (parts.length !== 3) return null;
+                
+                const birthYear = parseInt(parts[0]);
+                const birthMonth = parseInt(parts[1]) - 1; // Meses en JS son 0-11
+                const birthDay = parseInt(parts[2]);
+                
+                // Obtener fecha actual LOCAL (sin problemas de zona horaria)
+                const today = new Date();
+                const currentYear = today.getFullYear();
+                const currentMonth = today.getMonth();
+                const currentDay = today.getDate();
+                
+                // Crear fecha de hoy a medianoche LOCAL
+                const todayLocal = new Date(currentYear, currentMonth, currentDay);
+                
+                // Crear próximo cumpleaños para este año (LOCAL)
+                let nextBirthday = new Date(currentYear, birthMonth, birthDay);
+                
+                // Si el cumpleaños ya pasó este año, calcular para el próximo año
+                if (nextBirthday < todayLocal) {
+                    nextBirthday.setFullYear(currentYear + 1);
+                }
+                
+                // Calcular diferencia en días
+                const diffTime = nextBirthday.getTime() - todayLocal.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                // Solo mostrar si es dentro de los próximos 30 días
+                if (diffDays >= 0 && diffDays <= 30) {
+                    return {
+                        date: nextBirthday,
+                        daysUntil: diffDays,
+                        birthDay: birthDay,
+                        birthMonth: birthMonth + 1 // Devolver mes en formato 1-12
+                    };
+                }
+            } catch (e) {
+                console.error("Error calculando cumpleaños:", e);
             }
-
-            // Calcular días hasta el cumpleaños
-            const diffTime = nextBirthday - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            // Mostrar solo si es dentro de los próximos 30 días
-            if (diffDays <= 30) {
-                return {
-                    date: nextBirthday,
-                    daysUntil: diffDays
-                };
-            }
-
+            
             return null;
         }
 
         // Función para verificar cumpleaños próximos
-        // Reemplazar la función checkUpcomingBirthdays con esta versión mejorada
-function checkUpcomingBirthdays() {
-    const today = new Date();
-    const upcomingBirthdays = [];
-    
-    users.forEach(user => {
-        if (user.birthdate && user.status === 'active') {
-            const birthDate = new Date(user.birthdate);
-            const nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+        function checkUpcomingBirthdays() {
+            const today = new Date();
+            const upcomingBirthdays = [];
             
-            // Si el cumpleaños ya pasó este año, calcular para el próximo año
-            if (nextBirthday < today) {
-                nextBirthday.setFullYear(today.getFullYear() + 1);
+            users.forEach(user => {
+                if (user.birthdate && user.status === 'active') {
+                    const birthdayInfo = getUpcomingBirthdayInfo(user.birthdate);
+                    if (birthdayInfo && birthdayInfo.daysUntil <= 3) {
+                        upcomingBirthdays.push({
+                            user: user,
+                            daysUntil: birthdayInfo.daysUntil,
+                            nextBirthday: birthdayInfo.date
+                        });
+                    }
+                }
+            });
+            
+            // Ordenar por proximidad
+            upcomingBirthdays.sort((a, b) => a.daysUntil - b.daysUntil);
+            
+            // Mostrar notificación si hay cumpleaños próximos
+            if (upcomingBirthdays.length > 0) {
+                showBirthdayNotification(upcomingBirthdays);
             }
             
-            // Calcular días hasta el cumpleaños
-            const diffTime = nextBirthday - today;
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            
-            // Mostrar solo si es dentro de los próximos 7 días
-            if (diffDays <= 7 && diffDays > 0) {
-                upcomingBirthdays.push({
-                    user: user,
-                    daysUntil: diffDays,
-                    nextBirthday: nextBirthday
-                });
-            }
+            return upcomingBirthdays;
         }
-    });
-    
-    // Ordenar por proximidad
-    upcomingBirthdays.sort((a, b) => a.daysUntil - b.daysUntil);
-    
-    // Mostrar notificación si hay cumpleaños próximos
-    if (upcomingBirthdays.length > 0) {
-        showBirthdayNotification(upcomingBirthdays);
-    }
-    
-    return upcomingBirthdays;
-}
 
         // Nueva función para mostrar notificación de cumpleaños
         function showBirthdayNotification(birthdays) {
@@ -6548,24 +6573,45 @@ function checkUpcomingBirthdays() {
 
             let filteredUsers = [];
             const today = new Date();
-            const currentMonth = today.getMonth() + 1;
+            const currentMonth = today.getMonth() + 1; // Enero = 1, Diciembre = 12
 
             if (type === 'month') {
                 const birthdayModalTitle = document.getElementById('birthdayModalTitle');
                 if (birthdayModalTitle) birthdayModalTitle.textContent = 'Cumpleaños del Mes';
                 
                 filteredUsers = users.filter(user => {
-                    if (!user.birthdate) return false;
-                    const birthDate = new Date(user.birthdate);
-                    return birthDate.getMonth() + 1 === currentMonth;
+                    if (!user.birthdate || user.status !== 'active') return false;
+                    
+                    try {
+                        const birthDate = new Date(user.birthdate);
+                        return (birthDate.getMonth() + 1) === currentMonth;
+                    } catch (e) {
+                        return false;
+                    }
                 });
+                
+                // Ordenar por día del mes
+                filteredUsers.sort((a, b) => {
+                    const dateA = new Date(a.birthdate).getDate();
+                    const dateB = new Date(b.birthdate).getDate();
+                    return dateA - dateB;
+                });
+                
             } else {
                 const birthdayModalTitle = document.getElementById('birthdayModalTitle');
                 if (birthdayModalTitle) birthdayModalTitle.textContent = 'Cumpleaños Próximos (7 días)';
                 
                 filteredUsers = users.filter(user => {
+                    if (!user.birthdate || user.status !== 'active') return false;
                     const birthdayInfo = getUpcomingBirthdayInfo(user.birthdate);
                     return birthdayInfo !== null && birthdayInfo.daysUntil <= 7;
+                });
+                
+                // Ordenar por proximidad
+                filteredUsers.sort((a, b) => {
+                    const infoA = getUpcomingBirthdayInfo(a.birthdate);
+                    const infoB = getUpcomingBirthdayInfo(b.birthdate);
+                    return infoA.daysUntil - infoB.daysUntil;
                 });
             }
 
@@ -6574,6 +6620,10 @@ function checkUpcomingBirthdays() {
             } else {
                 filteredUsers.forEach(user => {
                     const birthdayInfo = getUpcomingBirthdayInfo(user.birthdate);
+                    const birthDate = new Date(user.birthdate);
+                    const day = birthDate.getDate()+1;
+                    const month = birthDate.toLocaleDateString('es-ES', { month: 'long' });
+                    
                     const birthdayItem = document.createElement('div');
                     birthdayItem.className = 'birthday-item';
                     birthdayItem.innerHTML = `
@@ -6581,14 +6631,19 @@ function checkUpcomingBirthdays() {
                             <div class="birthday-user-name">${user.name}</div>
                             <div class="birthday-user-details">
                                 Teléfono: ${user.phone || 'No registrado'} | 
-                                Fecha: ${formatDate(user.birthdate)} |
-                                <span class="birthday-date">Faltan ${birthdayInfo.daysUntil} días</span>
+                                Cumple: ${day} de ${month} |
+                                <span class="birthday-date">
+                                    ${birthdayInfo ? `Próximo en ${birthdayInfo.daysUntil} días` : 'Ya cumplido'}
+                                </span>
                             </div>
                         </div>
                         <div class="birthday-actions">
-                            <button class="btn btn-sm btn-success" onclick="sendBirthdayMessage('${user.id}')">
-                                <i class="fab fa-whatsapp"></i> Felicitar
-                            </button>
+                            ${user.phone && isValidPhone(user.phone) ? 
+                                `<button class="btn btn-sm btn-success" onclick="sendBirthdayMessage('${user.id}')">
+                                    <i class="fab fa-whatsapp"></i> Felicitar
+                                </button>` : 
+                                '<span class="text-muted">Sin teléfono válido</span>'
+                            }
                         </div>
                     `;
                     birthdayContent.appendChild(birthdayItem);
@@ -6965,11 +7020,7 @@ El equipo de Antología Box23`;
             try {
                 initializeApp();
                 checkAutoBackup();
-
-                // Verificar cumpleaños próximos al cargar la aplicación
-                setTimeout(() => {
-                    checkUpcomingBirthdays();
-                }, 1000);
+           
             } catch (error) {
                 console.error("Error al inicializar la aplicación:", error);
                 alert("Ocurrió un error al inicializar la aplicación. Por favor, recarga la página.");
